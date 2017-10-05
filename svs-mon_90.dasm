@@ -1,0 +1,1926 @@
+	processor 6502
+	org $9000
+
+d6510		= $00		;6510 On-Chip Data-Direction Register
+r6510		= $01		;6510 On-Chip 8-Bit I/O Register
+
+checkstop	= $ffe1			;$f6ed Stop-Taste abfragen eq->stop
+save		= $ffd8			;f5dd
+load		= $ffd5			;f49e
+print		= $ffd2			;a ausgeben
+input		= $ffcf			;f157 Eingabe eines Zeichens
+clrch		= $ffcc			;Ein/Ausgabe rücksetzen, immer eq
+ckout		= $ffc9			;Ausgabegrät setzen, x=Kanal
+chkin		= $ffc6			;Eingabegerät setzten, x=Kanal
+close		= $ffc3
+open		= $ffc0			;clc ->ok sec->error (Fortg. S.181)
+setnam		= $ffbd			;Filenamenparameter setzten
+					;a-länge x-low y-hi
+setfls		= $ffba			;Fileparameter setzten, 
+					;a-filenr, x-gerätenr, y-sekundäradr
+saveregister	= $e147			;SYS-Befehl: Register abspeichern
+bindbaslines	= $a533			;Basic-Zeilen neu binden
+basic_nmi_vec	= $a002			;Basic NMI-Vector
+
+fac2adr		= $b7f7			;Basic Umwandlung FAC nach Adressformat (0 bis 65535)
+asc2fac		= $bcf3			;Basic Umwandlung ASCII nach FAC
+uintout		= $bdcd			;Basic Positive Integerzahl ausgeben (a/x)
+
+chrgot		= $0079
+chrget		= $0073
+
+var2		= $02			;Diverses, ungenutzte Speicherstelle
+intadr		= $14			;14/15 Integer-Adresse, z.B. Zeilennummer (fac2adr)
+index		= $22			;-$25 Zeiger für diverses
+txttab		= $2b			;Zeiger auf Basic-Prgrammstart
+vartab		= $2d			;Zeiger auf Start der Variablen, Basic PRG-Ende
+prg_pointer	= $7a			;Programmzeiger für die chrget-Routine
+status		= $90			;Statuswort ST
+prg_end		= $ae			;$af Zeiger auf Programmende bei load/save
+linelen		= $b6			;Speicher für Zeilenlänge der Eingabezeile
+fnamelen	= $b7			;Speichert die Stringlänge
+filenumber	= $b8			;logische Filenummer
+secadr		= $b9			;Sekundäradresse
+devnumber	= $ba			;Geräteadresse
+rvs_mode	= $c7			;Zwischenvariable (normalerweise RVS)
+cursorcol	= $d3			;Cursorspalte
+hkommaflag	= $d4			;Flag für Hochkommamodus
+direct_mode	= $9d			;Flag für Direktmodus $80, Programm $00
+read_pointer	= $f8			;Zeiger auf den Lesebuffer für Blockread
+
+pointer4	= $bb			;$bb/$bc Zeiger auf String
+pointer1	= $fa			;$fa/$fb
+pointer2	= $fc			;$fc/$fd
+pointer3	= $fe			;$fe/$ff
+
+var1		= $ff			;ungenutzte Speicherstelle
+
+inputbuffer	= $200			;BASIC Eingabepuffer
+qualkey		= $028d			;Bit 012 für Shift, Commodore, CTRL
+
+sareg		= $30c			;Akku für SYS-Befehl
+sxreg		= $30d			;x-Register
+syreg		= $30e			;y-Register
+spreg		= $30f			;Status-Register
+
+cinv		= $314			;IRQ-Vektor
+cbinv		= $316			;Break-Vektor
+istop		= $328			;Stop-Vektor
+
+
+		JSR saveregister       	;9000  20 47 E1	Register retten
+		LDA #<break		;9003  A9 DB	Breakvektor auf
+		STA cbinv		;9005  8D 16 03	 Monitoreinprung setzen
+		LDA #>break		;9008  A9 90
+		STA cbinv+1		;900A  8D 17 03
+		SEC			;900D  38
+		LDY #'C			;900E  A0 43	'C' wird ausgegeben
+		.BYTE $2C		;9010  2C	BIT $42A0
+start_brk	LDY #'B			;9011  A0 42	'B' wird ausgegeben
+		CLD			;9013  D8
+		JMP storeregs		;9014  4C C4 90
+;------------------------------------------------------
+startmon	LDA save_pc		;9017  AD E9 9F	Monitor Haupteinsprung
+		SBC #$00		;901A  E9 00	bei Break 1 subtrahieren
+		STA save_pc		;901C  8D E9 9F	bei Call Carry=1
+		BCS main1		;901F  B0 03	kein Überlauf
+		DEC save_pc+1		;9021  CE EA 9F hi dekrementieren
+main1		JSR print_cr		;9024  20 6B 96
+		TYA			;9027  98
+		JSR print		;9028  20 CA F1	"C" oder "B" ausgeben
+		LDA #'*			;902B  A9 2A
+		JSR print		;902D  20 CA F1
+		LDX #$37		;9030  A2 37	Inhalt von $01
+		STX save_konfig		;9032  8E E7 9F
+		TSX			;9035  BA
+		STX save_status		;9036  8E ED 9F
+		LDA #$00		;9039  A9 00
+		STA read_pointer	;903B  85 F8
+		ORA #$80		;903D  09 80
+		STA read_pointer+1	;903F  85 F9
+		STA direct_mode		;9041  85 9D	Direkt-Modus setzen
+		JMP register		;9043  4C F1 90
+;------------------------------------------------------
+mainloop	LDX #$FB		;9046  A2 FB	Einprung CR
+		TXS			;9048  9A	Stack löschen
+		JSR reset_konfig	;9049  20 AA 99	#$37 -> $01
+		LDX #$2F		;904C  A2 2F
+		STX d6510		;904E  86 00	$00 Datenrichtung
+		JSR print_cr		;9050  20 6B 96
+		JSR print_prompt	;9053  20 68 96	Prompt ausgeben
+		LDY #$00		;9056  A0 00
+		STY hunt_ext		;9058  8C F8 9F	Speicherstellen löschen
+		STY what2		;905B  8C F9 9F Ausgabe für Binär
+		STY what3		;905E  8C E8 9F
+		STY wrap_around		;9061  8C FB 9F
+		STY hkommaflag		;9064  84 D4	Hochkommaflag löschen
+		STY prg_pointer		;9066  84 7A	für $02>00< der Eingabezeile
+		STY var1		;9068  84 FF
+		JSR input		;906A  20 57 F1	Zeile vom Bildschirm holen
+		CMP #13			;906D  C9 0D	Leerzeile?
+		BEQ mainloop		;906F  F0 D5	dann Hauptschleife
+		STY cursorcol		;9071  84 D3	Cursorposition auf Null
+
+mainl1		JSR input		;9073  20 57 F1
+		STA inputbuffer,Y	;9076  99 00 02	Zeile in den 
+		INY			;9079  C8	Eingabepuffer holen
+		CMP #13			;907A  C9 0D	bis Zeilenende (wie umständlich)
+		BNE mainl1		;907C  D0 F5
+
+		DEY			;907E  88
+		STY linelen		;907F  84 B6	Zeilenlänge zwischenspeichern
+		LDA inputbuffer		;9081  AD 00 02
+		CMP #'>			;9084  C9 3E	Prompt ">" überspringen
+		BNE mainl4		;9086  D0 0F
+		LDY #$00		;9088  A0 00
+mainl3		LDA inputbuffer+1,Y	;908A  B9 01 02	Eingabezeile ein Byte
+		STA inputbuffer,Y	;908D  99 00 02	nach unten kopieren
+		INY			;9090  C8
+		CPY linelen		;9091  C4 B6	schon Zeilenlänge?
+		BNE mainl3		;9093  D0 F5
+		DEC linelen		;9095  C6 B6	Zeilenlänge dekrementieren
+mainl4		LDA #>inputbuffer	;9097  A9 02
+		STA prg_pointer+1	;9099  85 7B	die chrgot-Routine auf $0200
+		JSR chrgot		;909B  20 79 00	erstes Zeichen holen
+		INC prg_pointer		;909E  E6 7A
+
+		LDX #$00		;90A0  A2 00
+mainl5		CMP cmdletters,X	;90A2  DD 81 9F	auf gültiges Commando prüfen
+		BEQ mainl6		;90A5  F0 14
+		INX			;90A7  E8
+		CPX #cmdletterlen	;90A8  E0 1C	alle gültigen Commandos?
+		BNE mainl5		;90AA  D0 F6
+
+		LDY prg_pointer		;90AC  A4 7A	kein gültiges Commando
+		INY			;90AE  C8
+		STY cursorcol		;90AF  84 D3	Cursor hinter Zeichen positionieren
+errormainl	JSR reset_konfig	;90B1  20 AA 99	Fehlereinsprung für alle Routinen
+		LDA #'?			;90B4  A9 3F	Fragezeichen ausgeben
+		JSR print		;90B6  20 CA F1
+		BNE mainloop		;90B9  D0 8B	zurück zur Eingabe
+
+mainl6		LDA cmdvechi,X		;90BB  BD CB 9F	Anspringen der entsprechenden
+		PHA			;90BE  48	Routine
+		LDA cmdveclo,X		;90BF  BD AF 9F	Werte aus der Sprungtabelle
+		PHA			;90C2  48	aus Stack
+		RTS			;90C3  60	und hin
+;------------------------------------------------------
+storeregs	PLA			;90C4  68	Rücksprungadresse
+		STA save_pc		;90C5  8D E9 9F	 low sichern
+		PLA			;90C8  68	 (PC)
+		STA save_pc+1		;90C9  8D EA 9F	 high
+		LDA cinv+1		;90CC  AD 15 03	IRQ-Vektor
+		STA save_irq+1		;90CF  8D EC 9F	 sichern
+		LDA cinv			;90D2  AD 14 03
+		STA save_irq		;90D5  8D EB 9F
+		JMP startmon		;90D8  4C 17 90	Monitor Haupteinsprung
+;------------------------------------------------------
+break		PLA			;90DB  68	Break-Einsprung
+		TAY			;90DC  A8	Register holen
+		PLA			;90DD  68
+		TAX			;90DE  AA
+		PLA			;90DF  68
+		PLP			;90E0  28
+		JSR saveregister	;90E1  20 47 E1	Register speichern
+		CLC			;90E4  18
+		JMP start_brk		;90E5  4C 11 90	Monitor start
+;------------------------------------------------------
+reg_read	LDA prg_pointer		;90E8  A5 7A	Einsprung "R"
+		CMP linelen		;90EA  C5 B6	kommt noch was?
+		BEQ register		;90EC  F0 03	 wenn nicht, register
+		JMP read		;90EE  4C 2D 98	 sonst read
+;------------------------------------------------------
+register	LDY #$00		;90F1  A0 00	Register ausgeben
+
+reg1		LDA registertext,Y	;90F3  B9 47 9F Textzeile ausgeben
+		JSR print		;90F6  20 CA F1
+		INY			;90F9  C8
+		CPY #regtextlen		;90FA  C0 2A
+		BNE reg1		;90FC  D0 F5
+
+		LDY #$00		;90FE  A0 00
+reg2		LDA save_pc+1,Y		;9100  B9 EA 9F	PC+IRQ
+		JSR hexout		;9103  20 3A 91	ausgeben
+		LDA save_pc,Y		;9106  B9 E9 9F
+		JSR hexout		;9109  20 3A 91
+		JSR print_space		;910C  20 6E 96
+		INY			;910F  C8
+		INY			;9110  C8
+		CPY #$04		;9111  C0 04	insgesamt 4 Bytes
+		BNE reg2		;9113  D0 EB
+
+		LDA save_status		;9115  AD ED 9F
+		JSR hexout		;9118  20 3A 91
+		JSR print_space		;911B  20 6E 96
+
+		LDY #$00		;911E  A0 00
+reg3		LDA sareg,Y		;9120  B9 0C 03	von SYS-Register laden
+		JSR hexout		;9123  20 3A 91	ausgeben
+		JSR print_space		;9126  20 6E 96
+		INY			;9129  C8
+		CPY #$04		;912A  C0 04	4 Register
+		BNE reg3		;912C  D0 F2
+
+		JSR print_space		;912E  20 6E 96
+		LDA spreg		;9131  AD 0F 03
+		JSR binout		;9134  20 12 92
+		JMP mainloop		;9137  4C 46 90
+;------------------------------------------------------
+hexout		PHA			;913A  48	Akku als Hexzahl ausgeben
+		LSR A			;913B  4A	oberes Nibble
+		LSR A			;913C  4A
+		LSR A			;913D  4A
+		LSR A			;913E  4A
+		TAX			;913F  AA
+		LDA hexnumbers,X	;9140  BD 71 9F
+		JSR print		;9143  20 CA F1	ausgeben
+		PLA			;9146  68
+		AND #$0F		;9147  29 0F	unteres Nibble
+		TAX			;9149  AA
+		LDA hexnumbers,X	;914A  BD 71 9F
+		JSR print		;914D  20 CA F1	ausgeben
+		RTS			;9150  60
+;------------------------------------------------------
+getvonbis	JSR hextobyte		;9151  20 83 91	Parameter holen ssss [eeee] (pointer1/pointer2)
+		STA pointer1+1		;9154  85 FB	Startadresse nach pointer1 holen
+		JSR hex2ndbyte		;9156  20 88 91
+		STA pointer1		;9159  85 FA
+		CPX linelen		;915B  E4 B6	Zeile zuende?
+		BNE getvonbis1		;915D  D0 0B	nicht, dann 2. Parameter
+		LDA var1		;915F  A5 FF
+		BEQ getvonbis1		;9161  F0 07
+		LDA #$FF		;9163  A9 FF	Ende auf $FFFF setzen
+		STA pointer2		;9165  85 FC
+		STA pointer2+1		;9167  85 FD
+		RTS			;9169  60
+;------------------------------------------------------
+getvonbis1	JSR hextobyte		;916A  20 83 91	Endadresse holen
+		STA pointer2+1		;916D  85 FD
+		JSR hex2ndbyte		;916F  20 88 91
+		STA pointer2		;9172  85 FC
+		LDA pointer1+1		;9174  A5 FB	Wenn Pointer 2
+		CMP pointer2+1		;9176  C5 FD	größer Pointer 1,
+		BCC getvonbis2		;9178  90 08	dann Ende
+; **** Fehler im Disassemble???, weil er $91b8 angibt, der Sprung aber nach $91b7 gehen sollte...
+		BNE errorout		;917A  D0 3C	sonst Fehler
+		LDA pointer2		;917C  A5 FC	nochmal low prüfen
+		CMP pointer1		;917E  C5 FA
+		BCC errorout		;9180  90 36	Fehler
+getvonbis2	RTS			;9182  60
+;------------------------------------------------------
+					;		2-Stellige Hexzahl in den Akku
+hextobyte	JSR chrgot		;9183  20 79 00	Spaces überlesen
+		LDX prg_pointer		;9186  A6 7A	Zeilenposition holen
+hex2ndbyte	STY index		;9188  84 22	Y-Register retten
+		LDA inputbuffer,X	;918A  BD 00 02	Zeichen aus dem Buffer
+		JSR hexiny		;918D  20 AB 91	nach Nibble wandeln
+		INX			;9190  E8	nächstes Zeichen
+		TYA			;9191  98	Nibble nach oben schieben
+		ASL A			;9192  0A
+		ASL A			;9193  0A
+		ASL A			;9194  0A
+		ASL A			;9195  0A
+		STA inputbuffer		;9196  8D 00 02	Zwischenspeichern
+		INC prg_pointer		;9199  E6 7A	nächstes Zeichen
+		LDA inputbuffer,X	;919B  BD 00 02	aus dem Buffer
+		JSR hexiny		;919E  20 AB 91	nach Nibble
+		INX			;91A1  E8	einen erhöhen
+		STX prg_pointer		;91A2  86 7A	und abspeichern
+		TYA			;91A4  98	mit dem Zwischenspeicher
+		ORA inputbuffer		;91A5  0D 00 02	verknüpfen, voilà
+		LDY index		;91A8  A4 22	Y-Register wiederherstellen
+xhexiny		RTS			;91AA  60
+;------------------------------------------------------
+hexiny		LDY #$0F		;91AB  A0 0F	Hexadezimalzahl nach Y holen
+hexiny1		CMP hexnumbers,Y	;91AD  D9 71 9F
+		BEQ xhexiny		;91B0  F0 F8	Fertig
+		DEY			;91B2  88
+		BPL hexiny1		;91B3  10 F8
+erroutcrsr	LDX prg_pointer		;91B5  A6 7A
+errorout	JSR xcrsrpos		;91B7  20 75 96
+		JMP errormainl		;91BA  4C B1 90	"?" und Hauptschleife
+;------------------------------------------------------
+dumpasc		STY rvs_mode		;91BD  84 C7	Y Zeichen als ASCII ausgeben
+dumpasc1	JSR get_byte		;91BF  20 74 9B	 geschickterweise im RVS-Flag gespeichert
+		PHA			;91C2  48	Akku retten
+		AND #$7F		;91C3  29 7F	oberstes Bit löschen
+		CMP #$20		;91C5  C9 20	ist druckbar?
+		BCS dumpasc2		;91C7  B0 04	ja, dann ausgeben
+		PLA			;91C9  68	sonst
+		LDA #'.			;91CA  A9 2E	A="."
+		PHA			;91CC  48
+dumpasc2	PLA			;91CD  68	Akku wiederherstellen
+		JSR print		;91CE  20 CA F1
+		DEC rvs_mode		;91D1  C6 C7	schon alle Y Zeichen?
+		BNE dumpasc1		;91D3  D0 EA	nein?, dann weiter
+		RTS			;91D5  60
+;------------------------------------------------------
+jmpmain1	JMP mainloop		;91D6  4C 46 90
+;------------------------------------------------------
+testkeys	LDA qualkey		;91D9  AD 8D 02	Qualifier gedrückt?
+		LSR A			;91DC  4A	Shift-Tastenbit nach C
+		BCS testkeys		;91DD  B0 FA	Shift gedrückt!
+		JSR checkstop		;91DF  20 ED F6	Änderung: über den Vektor
+		BEQ jmpmain1		;91E2  F0 F2	Abbruch zurück in die Hauptschleife
+		RTS			;91E4  60
+;------------------------------------------------------
+get_madr	LDX #$01		;91E5  A2 01	holt das nächste (für Memory)
+get_xadr	JSR hex2ndbyte		;91E7  20 88 91	Hexword nach Pointer1
+		STA pointer1+1		;91EA  85 FB
+		JSR hex2ndbyte		;91EC  20 88 91
+		STA pointer1		;91EF  85 FA
+		RTS			;91F1  60
+;------------------------------------------------------
+		;holt Stringadr nach Pointer4, Länge nach fnamelen, 
+get_string	LDX prg_pointer		;91F2  A6 7A	gibt die Länge im Y-Register zurück
+		INX			;91F4  E8	'"' überspringen
+		STX pointer4		;91F5  86 BB	lo speichern
+		LDA prg_pointer+1	;91F7  A5 7B	
+		STA pointer4+1		;91F9  85 BC	hi speichern
+
+		LDY #$00		;91FB  A0 00
+get_string1	LDA inputbuffer,X	;91FD  BD 00 02
+		CMP #'"'		;9200  C9 22	auf Stringende " prüfen
+		BEQ get_string2		;9202  F0 08
+		INY			;9204  C8
+		INX			;9205  E8
+		CPX linelen		;9206  E4 B6	Zeilenende?
+		BCC get_string1		;9208  90 F3
+		BCS jmperr1		;920A  B0 49	Fehler
+
+get_string2	TYA			;920C  98
+		STY fnamelen		;920D  84 B7	Stringlänge speichern
+		STX prg_pointer		;920F  86 7A	nächstes Zeichen hinter String
+		RTS			;9211  60
+;------------------------------------------------------
+					;               Parameter in what2 entscheidet, ob 01 oder .*
+binout		LDY #7			;9212  A0 07	binäres Zeichen ausgeben
+		STY var2		;9214  84 02	8-Bit, Zähler zwischenspeichern
+		LDY what2		;9216  AC F9 9F 0-"10" 2-"*."
+bino1		ASL A			;9219  0A
+		PHA			;921A  48
+		BCC bino2		;921B  90 05	Bit gesetzt?
+		LDA binnumbers,Y	;921D  B9 AB 9F	"1" oder "*"
+		BNE bino3		;9220  D0 03	immer
+bino2		LDA binnumbers+1,Y	;9222  B9 AC 9F	"0" oser "."
+bino3		JSR print		;9225  20 CA F1
+		PLA			;9228  68
+		DEC var2		;9229  C6 02	schon 8 Bit?
+		BPL bino1		;922B  10 EC
+		RTS			;922D  60
+;------------------------------------------------------
+binin		LDY #$07		;922E  A0 07	8 Bits in den Akku holen
+		STY var2		;9230  84 02
+		LDA #$00		;9232  A9 00	Byte löschen
+		PHA			;9234  48
+		LDY what2		;9235  AC F9 9F	"01" oder ".*"
+binin1		LDA inputbuffer,X	;9238  BD 00 02
+		CMP binnumbers,Y	;923B  D9 AB 9F	"1"/"*"?
+		BNE binin2		;923E  D0 03
+		SEC			;9240  38	Carry setzen
+		BCS binin3		;9241  B0 06
+binin2		CMP binnumbers+1,Y	;9243  D9 AC 9F	"0"/"."?
+		BNE jmperr1		;9246  D0 0D	ungültiges Zeichen
+		CLC			;9248  18	Carry löschen
+binin3		PLA			;9249  68	Akku holen
+		ROL A			;924A  2A	Carry reinrollen
+		PHA			;924B  48	und wieder sichern
+		INX			;924C  E8	nächstes Zeichen
+		DEC var2		;924D  C6 02	schon 8 Bits?
+		BPL binin1		;924F  10 E7
+		PLA			;9251  68	Bytes in den Akku
+		STX prg_pointer		;9252  86 7A	Zeilenpointer setzen
+		RTS			;9254  60
+;------------------------------------------------------
+jmperr1		JMP errorout		;9255  4C B7 91
+;------------------------------------------------------
+checkpointer	BIT wrap_around		;9258  2C FB 9F	Überlauf?
+		BMI checkpbrk		;925B  30 0E	Dann Abbruch
+		LDA pointer1+1		;925D  A5 FB	Hi-Bytes ok?
+		CMP pointer2+1		;925F  C5 FD
+		BCC checkpok		;9261  90 0B
+		BNE checkpbrk		;9263  D0 06
+		LDA pointer2		;9265  A5 FC	Lo-Bytes ok?
+		CMP pointer1		;9267  C5 FA
+		BCS checkpok		;9269  B0 03
+checkpbrk	JMP mainloop		;926B  4C 46 90	sonst Abbruch
+;------------------------------------------------------
+checkpok	RTS			;926E  60
+;------------------------------------------------------
+checkpquick	LDA pointer1		;926F  A5 FA	schnell Pointer1 mit Pointer2
+		CMP pointer2		;9271  C5 FC	vergleichen
+		BNE checkpquickok	;9273  D0 06
+		LDA pointer1+1		;9275  A5 FB	wenn lo und 
+		CMP pointer2+1		;9277  C5 FD	hi gleich, dann
+		BEQ checkpbrk		;9279  F0 F0	Ende
+checkpquickok	RTS			;927B  60
+;------------------------------------------------------
+memory		INC var1		;927C  E6 FF	"M" Einsprung
+		LDX prg_pointer		;927E  A6 7A	Zeilenposition
+		CPX linelen		;9280  E4 B6	am Zeilenende?
+		BNE memory1		;9282  D0 0F	dann Parameter holen
+		LDA read_pointer+1	;9284  A5 F9	Highbyte von bis 
+		STA pointer1+1		;9286  85 FB	auf mit "*" gespeicherten Wert
+		STA pointer2+1		;9288  85 FD
+		LDX #$00		;928A  A2 00	Lowbyte Begin auf xx00
+		STX pointer1		;928C  86 FA
+		DEX			;928E  CA
+		STX pointer2		;928F  86 FC	ende bei xxFF
+		BNE memory2		;9291  D0 03	Parameterholen überspringen
+memory1		JSR getvonbis		;9293  20 51 91	Parameter holen
+memory2		JSR pr_mem		;9296  20 1C 99	Zeilenanfang für Memory ausgeben
+
+		LDY #$00		;9299  A0 00	8 Hexbytes ausgeben
+memory3		JSR set_konfig		;929B  20 A3 99	Speichereinstellung
+		LDA (pointer1),Y	;929E  B1 FA
+		JSR reset_konfig	;92A0  20 AA 99	wieder zurückschalten
+		JSR hexout		;92A3  20 3A 91	Hexbyte ausgeben
+		JSR print_space		;92A6  20 6E 96	danach ein Space
+		INY			;92A9  C8
+		CPY #$08		;92AA  C0 08	schon 8 Bytes?
+		BNE memory3		;92AC  D0 ED
+
+		JSR dumpmemchar		;92AE  20 02 99	Anzahl in Y, inc pointer1
+		JSR checkpointer	;92B1  20 58 92	schon alle angezeigt?
+		JSR testkeys		;92B4  20 D9 91	bei Shifttaste Ausgabe stoppen, Stop-Abbruch
+		BNE memory2		;92B7  D0 DD	JMP nächste Zeile, immer not Equal
+;------------------------------------------------------
+
+get_hex		JSR get_madr		;92B9  20 E5 91	Hexdump-Zeile einlesen ":"
+		INX			;92BC  E8	Adresse nach Pointer1
+		TXA			;92BD  8A	Zeilenposition in A retten
+		JSR set_konfig		;92BE  20 A3 99	Speicherkonfiguration setzen
+		TAX			;92C1  AA	wieder nach X
+		LDY #$00		;92C2  A0 00
+get_hex1	JSR hex2ndbyte		;92C4  20 88 91	Byte holen
+		STA (pointer1),Y	;92C7  91 FA	speichern
+		INX			;92C9  E8	Leerzeichen überspringen
+		INY			;92CA  C8	nächstes Byte
+		CPY #$08		;92CB  C0 08	schon 8 Bytes?
+		BNE get_hex1		;92CD  D0 F5	nicht, dann weiter
+		LDA #31			;92CF  A9 1F	Cursor auf Position 31
+		STA cursorcol		;92D1  85 D3
+		JSR dumpmemchar		;92D3  20 02 99	ASCII ausgeben
+		JMP mainloop		;92D6  4C 46 90	
+;------------------------------------------------------
+fill		JSR getvonbis		;92D9  20 51 91	Einsprung "F" fill
+		JSR hextobyte		;92DC  20 83 91	Speicher füllen
+		JSR set_konfig		;92DF  20 A3 99 Speicherkonfiguration setzen
+fill1		TAX			;92E2  AA	Füllbyte nach x retten
+		LDY #$00		;92E3  A0 00
+		TXA			;92E5  8A	Füllbyte wieder in den Akku
+		STA (pointer1),Y	;92E6  91 FA	Schreiben
+		JSR checkpquick		;92E8  20 6F 92	Pointer vergleichen
+		JSR incp1		;92EB  20 4C 9B	Pointer1 inkrementieren
+		BNE fill1		;92EE  D0 F5	Schleife fortsetzen, immer not EQ, es sei wrap-around
+					;***************Fehler?
+;------------------------------------------------------
+
+compare		JSR getvonbis		;92F0  20 51 91	Einsprung "C" Vergleichen
+		JSR hextobyte		;92F3  20 83 91	von Speicher
+		STA pointer3+1		;92F6  85 FF	Vergleichsadresse holen
+		JSR hex2ndbyte		;92F8  20 88 91	nach Pointer3
+		STA pointer3		;92FB  85 FE
+		JSR print_cr		;92FD  20 6B 96
+
+		LDY #$00		;9300  A0 00
+compare1	JSR set_konfig		;9302  20 A3 99	Speicherkonfiguration setzen
+		LDA (pointer1),Y	;9305  B1 FA	Quelle mit
+		CMP (pointer3),Y	;9307  D1 FE	Ziel vergleichen
+		BNE compare3		;9309  D0 0E	ungleich! Adresse ausgeben
+compare4	JSR checkpquick		;930B  20 6F 92
+		INC pointer3		;930E  E6 FE
+		BNE compare2		;9310  D0 02	bei Überlazf
+		INC pointer3+1		;9312  E6 FF	auch hi-Byte inkrementieren
+compare2	JSR incp1		;9314  20 4C 9B	Pointer1 inkrementieren usw...
+		BNE compare1		;9317  D0 E9	Schleife fortsetzen
+
+compare3	JSR reset_konfig	;9319  20 AA 99	ungleich gefunden-> Adresse ausgeben
+		JSR pr_pointer1		;931C  20 58 96	Pointer1 ausgeben
+		LDA pointer3+1		;931F  A5 FF	Pointer3 
+		JSR hexout		;9321  20 3A 91	ausgeben
+		LDA pointer3		;9324  A5 FE
+		JSR hexout		;9326  20 3A 91
+		JSR print_space		;9329  20 6E 96	ein Space
+		JSR testkeys		;932C  20 D9 91	Stop und Shift abfragen
+		BNE compare4		;932F  D0 DA	weitermachen, immer NE
+;------------------------------------------------------
+konfig		JSR chrgot		;9331  20 79 00	"K" Einsprung Speicher-Konfiguration festlegen
+		LDX #$07		;9334  A2 07	erlaubt ist 1-7
+		LDY #$01		;9336  A0 01
+konfig1		CMP hexnumbers,Y	;9338  D9 71 9F	vergleichen
+		BEQ konfig2		;933B  F0 07
+		INY			;933D  C8	nächstes Zeichen
+		DEX			;933E  CA	schon alle?
+		BPL konfig1		;933F  10 F7
+		JMP erroutcrsr		;9341  4C B5 91	Cursor positionieren und Fehler
+
+konfig2		TXA			;9344  8A	Nummer in A
+		ORA #$30		;9345  09 30	$3x
+		STA save_konfig		;9347  8D E7 9F	merken
+		JMP mainloop		;934A  4C 46 90
+;------------------------------------------------------
+hunt		JSR check_star		;934D  20 2E 99	Einsprung "H" suchen nach Bytes
+		BNE hunt1		;9350  D0 05	kein erweitertes Hunt
+		DEC hunt_ext		;9352  CE F8 9F	erweitertes Hunt $ff
+		INC prg_pointer		;9355  E6 7A	"*" überspringen
+hunt1		JSR getvonbis		;9357  20 51 91
+		JSR check_string	;935A  20 34 99
+		BNE hunt2		;935D  D0 08	kein String, Bytes holen
+		JSR get_string		;935F  20 F2 91	Länge nach fnamelen, Adresse pointer4
+		BNE hunt4		;9362  D0 1A	wenn Stringlänge, dann los
+		JMP errorout		;9364  4C B7 91
+;------------------------------------------------------
+hunt2		LDY #$00		;9367  A0 00	x ist die Zeilenposition
+hunt3		JSR hextobyte		;9369  20 83 91	Bytes holen
+		STA inputbuffer+1,Y	;936C  99 01 02	und speichern
+		INY			;936F  C8	bis
+		CPX linelen		;9370  E4 B6	Zeilenende
+		BNE hunt3		;9372  D0 F5
+
+		STY fnamelen		;9374  84 B7	Länge speichern
+		LDA #<inputbuffer+1	;9376  A9 01	Adresse inputbuffer+1 lo
+		STA pointer4		;9378  85 BB
+		LDA #>inputbuffer+1	;937A  A9 02	hi
+		STA pointer4+1		;937C  85 BC
+
+hunt4		BIT hunt_ext		;937E  2C F8 9F	erweiterte Suche?
+		BPL hunt5		;9381  10 03	Nein, dann weg
+		JSR huntxpara		;9383  20 B9 93	Suchstring auf Distanzen reduzieren
+hunt5		JSR print_cr		;9386  20 6B 96	neue Zeile
+		JSR set_konfig		;9389  20 A3 99	Speicherkonfiguration setzen
+
+hunt51		LDY #$00		;938C  A0 00	von vorn beginnen
+hunt6		LDA (pointer1),Y	;938E  B1 FA
+		BIT hunt_ext		;9390  2C F8 9F
+		BPL hunt7		;9393  10 05	keine erweiterte Suche
+		INY			;9395  C8	!!!erweiterte Suche nach Differenzen!!!
+		SEC			;9396  38
+		SBC (pointer1),Y	;9397  F1 FA	nur die Differenz zum nächsten
+		DEY			;9399  88
+hunt7		CMP (pointer4),Y	;939A  D1 BB
+		BEQ hunt8		;939C  F0 08	übereinstimmung!
+hunt71		JSR checkpquick		;939E  20 6F 92
+		JSR incp1		;93A1  20 4C 9B
+		BNE hunt51		;93A4  D0 E6
+
+hunt8		INY			;93A6  C8	gefunden!, nächstes Zeichen
+		CPY fnamelen		;93A7  C4 B7	schon vom ganzen String?
+		BNE hunt6		;93A9  D0 E3	sonst weiter vergleichen
+
+		JSR reset_konfig	;93AB  20 AA 99	Speicher-Konfiguration wieder rücksetzen
+		JSR pr_pointer1		;93AE  20 58 96	Adresse ausgeben
+		JSR testkeys		;93B1  20 D9 91	Suche abbrechen?
+		JSR set_konfig		;93B4  20 A3 99	wieder anschalten
+		BNE hunt71		;93B7  D0 E5	Weitermachen
+;------------------------------------------------------
+huntxpara	LDY #$00		;93B9  A0 00	erweiterte Parameter für Hunt
+huntx1		LDA (pointer4),Y	;93BB  B1 BB
+		INY			;93BD  C8
+		CPY fnamelen		;93BE  C4 B7	schon den ganzen Namen?
+		BNE huntx2		;93C0  D0 05	nicht, dann weiter
+		DEC fnamelen		;93C2  C6 B7	Name aus Differenzen ist ein Byte kürzer
+		BEQ jmperr2		;93C4  F0 67	mindestens 2 Zeichen im Suchstring!-Fehler
+		RTS			;93C6  60
+
+huntx2		SEC			;93C7  38	die Differenz zum nächsten
+		SBC (pointer4),Y	;93C8  F1 BB
+		DEY			;93CA  88	auf das Zeichen kopieren
+		STA (pointer4),Y	;93CB  91 BB
+		INY			;93CD  C8	nächstes Zeichen
+		BNE huntx1		;93CE  D0 EB
+;------------------------------------------------------
+verify		LDA #$01		;93D0  A9 01	"V" Einsprung Verify
+		.BYTE $2C		;93D2  2C
+rload		LDA #0			;93D3  A9 00	"L" Einsprung Laden eines Files
+		STA var1		;93D5  85 FF	merken
+		JSR getfilepara		;93D7  20 49 94	Fileparameter holen
+		LSR A			;93DA  4A
+		BCS rload1		;93DB  B0 0A	Device ungerade? dann weiter
+		LDA #<rloadend		;93DD  A9 30	sonst (Disk) Stopvektor verbiegen
+		STA istop		;93DF  8D 28 03
+		LDA #>rloadend		;93E2  A9 94
+		STA istop+1		;93E4  8D 29 03
+rload1		CPX linelen		;93E7  E4 B6
+		BEQ rload2		;93E9  F0 0E	Ende der Zeile?
+		JSR chrgot		;93EB  20 79 00	sonst
+		LDX prg_pointer		;93EE  A6 7A
+		JSR get_xadr		;93F0  20 E7 91	Ladeadresse an x-pos nach pointer1 holen
+		DEC secadr		;93F3  C6 B9	Sekundäradresse 0
+		LDX pointer1		;93F5  A6 FA	Ladeadresse lo-x
+		LDY pointer1+1		;93F7  A4 FB	hi-y
+rload2		LDA var1		;93F9  A5 FF	0-load 1-verify
+		JSR load		;93FB  20 9E F4
+		LDA devnumber		;93FE  A5 BA	Gerätenummer
+		LSR A			;9400  4A
+		BCS rload3		;9401  B0 12	ungerade?
+
+		LDA status		;9403  A5 90	Status prüfen
+		BEQ rloaderr		;9405  F0 15	Fehler
+		BMI rloaderr		;9407  30 13	Fehler
+		CMP #66			;9409  C9 42
+		BEQ rloaderr		;940B  F0 0F	Fehler
+		LDA #'-			;940D  A9 2D
+		JSR print		;940F  20 CA F1
+		JSR rloadend		;9412  20 30 94	-$xxxx und Stopvektor restaurieren
+rload3		LDA load_flag		;9415  A5 93	0-load 1-verify
+		BNE rloadverify		;9417  D0 09	Verify ok?
+rloadexit	JMP mainloop		;9419  4C 46 90
+;------------------------------------------------------
+rloaderr	JSR oldstop		;941C  20 3E 94	Stopvektor restaurieren
+		JMP diskcmd1		;941F  4C B6 94	Diskstatus holen und ausgeben
+;------------------------------------------------------
+rloadverify	JSR print_cr		;9422  20 6B 96	neue Zeile
+		LDA status		;9425  A5 90
+		CMP #80			;9427  C9 50	wenn $80
+		BEQ jmperr2		;9429  F0 02	Verify-Error
+		BNE rloadexit		;942B  D0 EC	sonst ok
+jmperr2		JMP errormainl		;942D  4C B1 90
+;------------------------------------------------------
+rloadend	LDA prg_end		;9430  A5 AE	Stop-Einsprung bei load/save
+		STA pointer1		;9432  85 FA	bisher bis hier
+		LDA prg_end+1		;9434  A5 AF	geladen
+		STA pointer1+1		;9436  85 FB
+		JSR print_space		;9438  20 6E 96	Leerzeichen
+		JSR pr_dollarp1		;943B  20 53 96 $xxxx ausgeben
+oldstop		LDA #$ED		;943E  A9 ED	alten Stopvektor restaurieren
+		STA istop		;9440  8D 28 03
+		LDA #$F6		;9443  A9 F6
+		STA istop+1		;9445  8D 29 03
+		RTS			;9448  60
+;------------------------------------------------------
+getfilepara	LDA #$01		;9449  A9 01
+		STA filenumber		;944B  85 B8	Filenummer
+		STA secadr		;944D  85 B9	und Sekundäradresse initialisieren
+		JSR check_string	;944F  20 34 99	String 
+		BEQ getfilepara1	;9452  F0 03	vorhanden?
+		JMP erroutcrsr		;9454  4C B5 91	sonst Fehler
+
+getfilepara1	JSR get_string		;9457  20 F2 91	Filenamen holen
+		INX			;945A  E8	überspringen von '"'
+		INX			;945B  E8	und ' '
+		STX prg_pointer		;945C  86 7A	Zeiger hinter String setzen
+		JSR hextobyte		;945E  20 83 91	Geräteadresse holen
+		STA devnumber		;9461  85 BA	und schreiben
+		INC prg_pointer		;9463  E6 7A	' ' überspringen
+		RTS			;9465  60
+;------------------------------------------------------
+save_spr	JSR check_string	;9466  20 34 99	"S" Einsprung Speichern/Sprite ausgeben
+		BEQ rsave		;9469  F0 08	wenn String, dann save
+		LDX #$02		;946B  A2 02	3 Bytes
+		STX hunt_ext		;946D  8E F8 9F
+		JMP zeichout		;9470  4C B1 98	binär Ausgeben
+;------------------------------------------------------
+rsave		LDA save_konfig		;9473  AD E7 9F	welche Speicherkonfiguration?
+		CMP #$36		;9476  C9 36	größer gleich $36?
+		BCC jmperr2		;9478  90 B3	sonst Fehler, speichern in dieser Konfig nicht möglich
+		STA r6510		;947A  85 01	Konfiguration setzen
+		JSR getfilepara		;947C  20 49 94	Fileparameter holen
+		CPX linelen		;947F  E4 B6	schon Ende?
+		BNE rsave1		;9481  D0 08
+
+		LDX vartab		;9483  A6 2D	Basic-PRG Ende
+		LDY vartab+1		;9485  A4 2E	nach x/y
+		LDA #txttab		;9487  A9 2B	Zeiger Basic-PRG Start
+		BNE rsave3		;9489  D0 0F
+
+rsave1		JSR getvonbis		;948B  20 51 91	sonst Start-Endadresse holen
+		INC pointer2		;948E  E6 FC	Ende plus eins
+		BNE rsave4		;9490  D0 02
+		INC pointer2+1		;9492  E6 FD	Übertrag
+rsave4		LDX pointer2		;9494  A6 FC	Ende nach X/Y
+		LDY pointer2+1		;9496  A4 FD
+		LDA #pointer1		;9498  A9 FA	Start Pointer1
+rsave3		PHA			;949A  48	Akku retten
+		JSR print_cr		;949B  20 6B 96	neue Zeile
+		PLA			;949E  68	Akku restaurieren
+		JSR save		;949F  20 DD F5	File Speichern
+		LDA devnumber		;94A2  A5 BA
+		LSR A			;94A4  4A	ungerade?
+		BCS jmpmain2		;94A5  B0 44
+		BCC diskcmd1		;94A7  90 0D
+;------------------------------------------------------
+diskcmd		JSR check_string	;94A9  20 34 99	Einsprung "@" Diskcommand
+		BNE diskcmd1		;94AC  D0 08	kein folgender String
+		JSR get_string		;94AE  20 F2 91	sonst hole String
+		JSR open_dch_name	;94B1  20 52 99	und sende ihn
+		BNE diskcmd2		;94B4  D0 03
+diskcmd1	JSR open_dch		;94B6  20 4D 99	open 15,8,15
+diskcmd2	JSR print_cr		;94B9  20 6B 96	neue Zeile
+		LDX #15			;94BC  A2 0F	
+		JSR ckout		;94BE  20 C9 FF	Ausgabe auf Disk
+		BCS diskcmd4		;94C1  B0 12	Fehler
+		JSR clrch		;94C3  20 CC FF	Einausgabe rücksetzen
+		LDX #$0F		;94C6  A2 0F	und jetzt auf Kanal 15
+		JSR chkin		;94C8  20 C6 FF	Eingabe
+diskcmd3	JSR input		;94CB  20 57 F1	Byte holen
+		JSR print		;94CE  20 CA F1	und ausgeben
+		CMP #13			;94D1  C9 0D	bis Zeilenende
+		BNE diskcmd3		;94D3  D0 F6
+diskcmd4	JMP close_dch		;94D5  4C 93 99	Kanal schließen
+;------------------------------------------------------
+old		LDY #$01		;94D8  A0 01	"O" Einprung Basic-Old
+		TYA			;94DA  98	New-Befehl rückgängig machen
+		STA (txttab),Y		;94DB  91 2B	Basic-Anfang $0801+1
+		JSR bindbaslines	;94DD  20 33 A5	Basic-Zeilen neu binden
+		TXA			;94E0  8A	Ende low in x nach A
+		ADC #$02		;94E1  69 02	plus 2
+		STA vartab		;94E3  85 2D	bei Basic-PRG-Ende speichern
+		LDA $23			;94E5  A5 23	Ende High
+		ADC #$00		;94E7  69 00	plus eventuellen Überlauf
+		STA vartab+1		;94E9  85 2E	nach Basic Ende
+jmpmain2	JMP mainloop		;94EB  4C 46 90
+;------------------------------------------------------
+transfer	JSR getvonbis		;94EE  20 51 91	"T" Einprung Verschieben von Speicher
+		JSR hextobyte		;94F1  20 83 91	hole nach Adresse
+		STA pointer3+1		;94F4  85 FF	nach Pointer3
+		JSR hex2ndbyte		;94F6  20 88 91
+		STA pointer3		;94F9  85 FE
+		CPX linelen		;94FB  E4 B6	war's das?
+		BEQ transfer4		;94FD  F0 1C	keine weiteren Parameter
+
+		JSR chrgot		;94FF  20 79 00	Zusatzparameter holen und auswerten
+		CMP #'+			;9502  C9 2B	Wert addieren?
+		BNE transfer1		;9504  D0 04
+		LDA #$80		;9506  A9 80	$80 "+" addieren
+		BNE transfer2		;9508  D0 06
+transfer1	CMP #'-			;950A  C9 2D
+		BNE transfer3		;950C  D0 07
+		LDA #$40		;950E  A9 40	$40 "-" subtrahieren
+transfer2	STA hunt_ext		;9510  8D F8 9F
+		INC prg_pointer		;9513  E6 7A	"+/-" überspringen
+transfer3	JSR hextobyte		;9515  20 83 91	Byte holen
+		STA what2		;9518  8D F9 9F	Zwischenspeichern in what2
+
+transfer4	JSR set_konfig		;951B  20 A3 99	Speicher umstellen
+		LDA pointer3+1		;951E  A5 FF	Destination oberhalb
+		CMP pointer1+1		;9520  C5 FB	Source?
+		BCC transferauf		;9522  90 3E	Nein, von unten nach oben kopiern
+		BNE transferab		;9524  D0 06
+		LDA pointer3		;9526  A5 FE	Lo Bytes
+		CMP pointer1		;9528  C5 FA	Pointer1 kleiner?
+		BCC transferauf		;952A  90 36	dann weiter, sonst von unten nach oben
+
+transferab	LDA pointer2		;952C  A5 FC	Transfer abwärts
+		SEC			;952E  38	Länge feststellen
+		SBC pointer1		;952F  E5 FA	Lo
+		TAY			;9531  A8	nach Y
+		LDA pointer2+1		;9532  A5 FD
+		SBC pointer1+1		;9534  E5 FB	Hi
+		TAX			;9536  AA	nach X
+		TYA			;9537  98
+		CLC			;9538  18
+		ADC pointer3		;9539  65 FE	Lo zu Dest addieren
+		STA pointer3		;953B  85 FE
+		TXA			;953D  8A	Hi zu Dest addieren
+		ADC pointer3+1		;953E  65 FF
+		STA pointer3+1		;9540  85 FF
+
+		LDY #$00		;9542  A0 00
+transab1	LDA (pointer2),Y	;9544  B1 FC	Speicher Kopieren von oben herab
+		JSR transops		;9546  20 75 95 Verknüpfungen ausführen
+		LDA pointer2		;9549  A5 FC
+		SEC			;954B  38
+		SBC #$01		;954C  E9 01
+		STA pointer2		;954E  85 FC
+		BCS transab2		;9550  B0 02	kein Übertrag
+		DEC pointer2+1		;9552  C6 FD
+transab2	LDA pointer3		;9554  A5 FE
+		SEC			;9556  38
+		SBC #$01		;9557  E9 01
+		STA pointer3		;9559  85 FE
+		BCS transab1		;955B  B0 E7	kein Übertrag
+		DEC pointer3+1		;955D  C6 FF
+		JMP transab1		;955F  4C 44 95	Schleife wiederholen
+;------------------------------------------------------
+transfauf	LDY #$00		;9562  A0 00	Aufwärts verschieben
+transauf1	LDA (pointer1),Y	;9564  B1 FA	Speicherverschieben
+		JSR transops		;9566  20 75 95 Verknüpfungen
+		JSR incp1		;9569  20 4C 9B Pointer1 inkrementieren
+		INC pointer3		;956C  E6 FE
+		BNE transauf1		;956E  D0 F4	kein Übertrag
+		INC pointer3+1		;9570  E6 FF
+		JMP transauf1		;9572  4C 64 95	Schleifenende
+;------------------------------------------------------
+					;		Beim Transfer zusätzlich
+transops	BIT hunt_ext		;9575  2C F8 9F auszuführende Operationen 
+		BMI topsadd		;9578  30 09
+		BVC topseor		;957A  50 0E
+		SEC			;957C  38	sonst subrahieren
+		SBC what2		;957D  ED F9 9F
+		JMP topsend		;9580  4C 8D 95
+;------------------------------------------------------
+topsadd		CLC			;9583  18	Wert addieren
+		ADC what2		;9584  6D F9 9F
+		JMP topsend		;9587  4C 8D 95
+;------------------------------------------------------
+topseor		EOR what2		;958A  4D F9 9F	Wert eor'n
+topsend		STA (pointer3),Y	;958D  91 FE	Wert schreiben
+		JSR checkpquick		;958F  20 6F 92
+		RTS			;9592  60	Ende transferops
+;------------------------------------------------------
+umrechnung	JSR chrgot		;9593  20 79 00	"U" Einsprung, umrechnen einer Zahl in andere
+		CMP #'$'		;9596  C9 24	Hexzahl
+		BEQ umrhex		;9598  F0 0B
+		CMP #'!'		;959A  C9 21	Dezimalzahl
+		BEQ umrdez		;959C  F0 33
+		CMP #'%'		;959E  C9 25	Binärzahl
+		BEQ umrbin		;95A0  F0 4D
+umrerr		JMP erroutcrsr		;95A2  4C B5 91
+;------------------------------------------------------
+umrhex		INC prg_pointer		;95A5  E6 7A
+		JSR hextobyte		;95A7  20 83 91
+		STA pointer1+1		;95AA  85 FB
+		CPX linelen		;95AC  E4 B6	Zeilenende?
+		BNE umrhex2		;95AE  D0 0A	wenn nicht dann Zeichen holen
+umrhex1		LDA pointer1+1		;95B0  A5 FB	high -> low
+		STA pointer1		;95B2  85 FA	weil nur ein Byte
+		LDA #$00		;95B4  A9 00
+		STA pointer1+1		;95B6  85 FB	highbyte löschen
+		BEQ umrhex3		;95B8  F0 0C	Jump...
+
+umrhex2		LDA inputbuffer,X	;95BA  BD 00 02
+		CMP #' '		;95BD  C9 20
+		BEQ umrhex1		;95BF  F0 EF	bei Space nur ein Byte
+		JSR hex2ndbyte		;95C1  20 88 91 zweites Byte holen
+		STA pointer1		;95C4  85 FA	low
+umrhex3		JSR prgcrsrpos		;95C6  20 73 96	Cursorpos auf Zeilenende
+		JSR printbin		;95C9  20 26 96
+		JSR printdez		;95CC  20 3E 96
+		BNE umrend		;95CF  D0 52
+
+umrdez		JSR chrget		;95D1  20 73 00
+		BCS umrerr		;95D4  B0 CC
+		JSR asc2fac		;95D6  20 F3 BC	Basic ASCII-Wert holen
+		JSR fac2adr		;95D9  20 F7 B7 Basic nach Adresswert (int) wandeln
+		LDA intadr		;95DC  A5 14	Ergebnis übertragen
+		STA pointer1		;95DE  85 FA
+		LDA intadr1		;95E0  A5 15
+		STA pointer1+1		;95E2  85 FB
+		JSR prgcrsrpos		;95E4  20 73 96	Cursor auf Zeilenende
+		JSR printbin		;95E7  20 26 96
+		JSR printhex		;95EA  20 50 96
+		BNE umrend		;95ED  D0 34
+
+umrbin		JSR chrget		;95EF  20 73 00
+		LDX prg_pointer		;95F2  A6 7A
+		JSR binin		;95F4  20 2E 92 Byte holen
+		CPX linelen		;95F7  E4 B6	Zeilenende?
+		BEQ umrbin1		;95F9  F0 0B	dann schon Schluß
+		PHA			;95FB  48
+		INX			;95FC  E8
+		LDA inputbuffer,X	;95FD  BD 00 02	nächstes Zeichen holen
+		TAX			;9600  AA
+		PLA			;9601  68
+		CPX #'='		;9602  E0 3D	???
+		BNE umbin2		;9604  D0 08
+umrbin1		STA pointer1		;9606  85 FA	Wert speichern
+		LDA #$00		;9608  A9 00	da nur ein Byte
+		STA pointer1+1		;960A  85 FB	High löschen
+		BEQ umbin3		;960C  F0 0C
+
+umbin2		STA pointer1+1		;960E  85 FB	sonst 2. Byte holen
+		JSR chrget		;9610  20 73 00
+		LDX prg_pointer		;9613  A6 7A
+		JSR binin		;9615  20 2E 92
+		STA pointer1		;9618  85 FA
+umbin3		JSR prgcrsrpos		;961A  20 73 96	Cursor auf Zeilenende
+		JSR printhex		;961D  20 50 96	und ausgeben
+		JSR printdez		;9620  20 3E 96
+umrend		JMP mainloop		;9623  4C 46 90
+;------------------------------------------------------
+printbin	JSR print_eq		;9626  20 65 96	Binärwert drucken
+		LDA #'%'		;9629  A9 25
+		JSR print		;962B  20 CA F1
+		LDA pointer1+1		;962E  A5 FB	High
+		JSR binout		;9630  20 12 92
+		JSR print_space		;9633  20 6E 96
+		LDA pointer1		;9636  A5 FA	Low
+		JSR binout		;9638  20 12 92
+		JMP print_space		;963B  4C 6E 96
+;------------------------------------------------------
+printdez	JSR print_eq		;963E  20 65 96
+		LDA #'!'		;9641  A9 21
+		JSR print		;9643  20 CA F1
+		LDA pointer1+1		;9646  A5 FB	High
+		LDX pointer1		;9648  A6 FA	Low
+		JSR uintout		;964A  20 CD BD
+		JMP print_space		;964D  4C 6E 96
+;------------------------------------------------------
+printhex	JSR print_eq		;9650  20 65 96
+pr_dollarp1	LDA #'$'		;9653  A9 24
+		JSR print		;9655  20 CA F1
+pr_pointer1	LDA pointer1+1		;9658  A5 FB	High ausgeben
+		JSR hexout		;965A  20 3A 91
+		LDA pointer1		;965D  A5 FA	Low
+		JSR hexout		;965F  20 3A 91
+		JMP print_space		;9662  4C 6E 96
+;------------------------------------------------------
+print_eq	LDA #'='		;9665  A9 3D
+		.BYTE $2C		;9667  2C	BIT $xxxx
+print_prompt	LDA #'>'		;9668  A9 3E
+		.BYTE $2C		;966A  2C 	BIT $xxxx
+print_cr	LDA #13			;966B  A9 0D
+		.BYTE $2C		;966D  2C 	BIT $xxxx
+print_space	LDA #' '		;966E  A9 20	Space
+		JMP print		;9670  4C CA F1
+;------------------------------------------------------
+prgcrsrpos	LDX prg_pointer		;9673  A6 7A	Cursorpostition aus Eingabezeilenposition
+xcrsrpos	INX			;9675  E8	Plus zwei setzen
+		INX			;9676  E8
+		STX cursorcol		;9677  86 D3
+		RTS			;9679  60
+;------------------------------------------------------
+*********************************************************************************
+ascii		INC var1		;967A  E6 FF	"A" Einprung ASCII-Zeile Ausgeben
+		LDX prg_pointer		;967C  A6 7A
+		CPX linelen		;967E  E4 B6
+		BNE $968A		;9680  D0 08
+		LDA #$80		;9682  A9 80
+		STA doitinasc		;9684  8D FD 9F
+		JMP mainloop		;9687  4C 46 90
+;------------------------------------------------------
+		JSR getvonbis		;968A  20 51 91
+		JSR pr_asc		;968D  20 16 99
+		LDX #$1F		;9690  A2 1F
+		STX linelen		;9692  86 B6
+		JSR get_byte		;9694  20 74 9B
+		CMP #$20		;9697  C9 20
+		BCC $96A7		;9699  90 0C
+		CMP #$60		;969B  C9 60
+		BCC $96A9		;969D  90 0A
+		CMP #$A0		;969F  C9 A0
+		BCC $96A7		;96A1  90 04
+		CMP #$DE		;96A3  C9 DE
+		BCC $96A9		;96A5  90 02
+		LDA #$2E		;96A7  A9 2E
+		JSR print		;96A9  20 CA F1
+		DEC linelen		;96AC  C6 B6
+		BPL $9694		;96AE  10 E4
+		JSR checkpointer		;96B0  20 58 92
+		JSR testkeys		;96B3  20 D9 91
+		BNE $968D		;96B6  D0 D5
+get_reg		LDX #$02		;96B8  A2 02	";" Einprung Register einlesen
+		LDY #$00		;96BA  A0 00
+		JSR hex2ndbyte		;96BC  20 88 91
+		STA save_pc+1,Y		;96BF  99 EA 9F
+		JSR hex2ndbyte		;96C2  20 88 91
+		STA save_pc,Y		;96C5  99 E9 9F
+		INX			;96C8  E8
+		INY			;96C9  C8
+		INY			;96CA  C8
+		CPY #$04		;96CB  C0 04
+		BNE $96BC		;96CD  D0 ED
+		JSR hex2ndbyte		;96CF  20 88 91
+		STA save_status		;96D2  8D ED 9F
+		LDY #$00		;96D5  A0 00
+		STY cursorcol		;96D7  84 D3
+		INX			;96D9  E8
+		JSR hex2ndbyte		;96DA  20 88 91
+		STA sareg,Y		;96DD  99 0C 03
+		INY			;96E0  C8
+		CPY #$03		;96E1  C0 03
+		BNE $96D9		;96E3  D0 F4
+		INX			;96E5  E8
+		JSR hex2ndbyte		;96E6  20 88 91
+		CMP spreg		;96E9  CD 0F 03
+		BNE $96F3		;96EC  D0 05
+		INX			;96EE  E8
+		INX			;96EF  E8
+		JSR binin		;96F0  20 2E 92
+		STA spreg		;96F3  8D 0F 03
+		LDY #$27		;96F6  A0 27
+		JMP $90F3		;96F8  4C F3 90
+;------------------------------------------------------
+goto		LDX prg_pointer		;96FB  A6 7A	"G" Einprung Goto PC
+		CPX linelen		;96FD  E4 B6
+		BEQ $970D		;96FF  F0 0C
+		JSR hextobyte		;9701  20 83 91
+		STA save_pc+1		;9704  8D EA 9F
+		JSR hex2ndbyte		;9707  20 88 91
+		STA save_pc		;970A  8D E9 9F
+		LDX save_status		;970D  AE ED 9F
+		TXS			;9710  9A
+		JSR set_konfig		;9711  20 A3 99
+		LDX #$01		;9714  A2 01
+		LDA save_pc,X		;9716  BD E9 9F
+		STA $14,X		;9719  95 14
+		PHA			;971B  48
+		LDA save_irq,X		;971C  BD EB 9F
+		STA cinv,X		;971F  9D 14 03
+		DEX			;9722  CA
+		BPL $9716		;9723  10 F1
+		LDA #$8F		;9725  A9 8F
+		PHA			;9727  48
+		LDA #$FF		;9728  A9 FF
+		PHA			;972A  48
+		JMP $E136		;972B  4C 36 E1
+;------------------------------------------------------
+poke		INC var1		;972E  E6 FF	"P" Einprung Anzeigen von Bildschirmpoke
+		LDX prg_pointer		;9730  A6 7A
+		CPX linelen		;9732  E4 B6
+		BNE $973E		;9734  D0 08
+		LDA #$00		;9736  A9 00
+		STA doitinasc		;9738  8D FD 9F
+		JMP mainloop		;973B  4C 46 90
+;------------------------------------------------------
+		JSR getvonbis		;973E  20 51 91
+		JSR pr_poke		;9741  20 13 99
+		LDY #$20		;9744  A0 20
+		JSR $9751		;9746  20 51 97
+		JSR checkpointer		;9749  20 58 92
+		JSR testkeys		;974C  20 D9 91
+		BNE $9741		;974F  D0 F0
+		STY var1		;9751  84 FF
+		JSR get_byte		;9753  20 74 9B
+		TAY			;9756  A8
+		BMI $975F		;9757  30 06
+		JSR $9769		;9759  20 69 97
+		JMP $9761		;975C  4C 61 97
+;------------------------------------------------------
+		LDA #$2E		;975F  A9 2E
+		JSR print		;9761  20 CA F1
+		DEC var1		;9764  C6 FF
+		BNE $9753		;9766  D0 EB
+		RTS			;9768  60
+;------------------------------------------------------
+		STA $D7		;9769  85 D7
+		AND #$3F		;976B  29 3F
+		ASL $D7		;976D  06 D7
+		BIT $D7		;976F  24 D7
+		BPL $9775		;9771  10 02
+		ORA #$80		;9773  09 80
+		BVS $9779		;9775  70 02
+		ORA #$40		;9777  09 40
+		RTS			;9779  60
+;------------------------------------------------------
+get_ascii	LDA #$80		;977A  A9 80	"." Einsprung ASCII-Zeile einlesen
+		.BYTE $2C		;977C  2C
+get_poke	LDA #0			;977D  A9 00	"/" Einsprung Bildschirmcode einlesen
+		STA var2			;977F  85 02
+		JSR get_madr		;9781  20 E5 91
+		JSR set_konfig		;9784  20 A3 99
+		LDA $D1			;9787  A5 D1
+		CLC			;9789  18
+		ADC #$07		;978A  69 07
+		STA $D1		;978C  85 D1
+		BCC $9792		;978E  90 02
+		INC $D2		;9790  E6 D2
+		LDY #$00		;9792  A0 00
+		LDA ($D1),Y		;9794  B1 D1
+		CMP #$2E		;9796  C9 2E
+		BEQ $97A3		;9798  F0 09
+		BIT var2		;979A  24 02
+		BPL $97A1		;979C  10 03
+		JSR $9769		;979E  20 69 97
+		STA (pointer1),Y		;97A1  91 FA
+		INY			;97A3  C8
+		CPY #$20		;97A4  C0 20
+		BNE $9794		;97A6  D0 EC
+		JMP mainloop		;97A8  4C 46 90
+;------------------------------------------------------
+star		LDX prg_pointer		;97AB  A6 7A	"*" Einsprung letzten gelesen Block ausgeben
+		CPX linelen		;97AD  E4 B6
+		BEQ $97D2		;97AF  F0 21
+		JSR chrgot		;97B1  20 79 00
+		CMP #$53		;97B4  C9 53
+		BEQ $9822		;97B6  F0 6A
+		CMP #$42		;97B8  C9 42
+		BNE $97CA		;97BA  D0 0E
+		JSR chrget		;97BC  20 73 00
+		CMP #$0D		;97BF  C9 0D
+		BEQ $9808		;97C1  F0 45
+		CMP #$49		;97C3  C9 49
+		BEQ $97E7		;97C5  F0 20
+		JMP erroutcrsr		;97C7  4C B5 91
+;------------------------------------------------------
+		JSR hextobyte		;97CA  20 83 91
+		STA read_pointer+1	;97CD  85 F9
+		JMP mainloop		;97CF  4C 46 90
+;------------------------------------------------------
+		JSR print_cr		;97D2  20 6B 96
+		LDA $9FFE		;97D5  AD FE 9F
+		JSR hexout		;97D8  20 3A 91
+		JSR print_space		;97DB  20 6E 96
+		LDA $9FFF		;97DE  AD FF 9F
+		JSR hexout		;97E1  20 3A 91
+		JMP mainloop		;97E4  4C 46 90
+;------------------------------------------------------
+		LDA #$97		;97E7  A9 97
+		STA $DD00		;97E9  8D 00 DD
+		LDA #$04		;97EC  A9 04
+		STA $0288		;97EE  8D 88 02
+		LDY #$00		;97F1  A0 00
+		LDA $0286		;97F3  AD 86 02
+		STA $D800,Y		;97F6  99 00 D8
+		STA $D900,Y		;97F9  99 00 D9
+		STA $DA00,Y		;97FC  99 00 DA
+		STA $DB00,Y		;97FF  99 00 DB
+		INY			;9802  C8
+		BNE $97F6		;9803  D0 F1
+		JSR input		;9805  20 57 F1
+		LDA $DD00		;9808  AD 00 DD
+		EOR #$02		;980B  49 02
+		STA $DD00		;980D  8D 00 DD
+		BIT $0288		;9810  2C 88 02
+		BPL $9818		;9813  10 03
+		LDA #$04		;9815  A9 04
+		BIT $84A9		;9817  2C A9 84
+		STA $0288		;981A  8D 88 02
+		JSR $E544		;981D  20 44 E5
+		BNE $982A		;9820  D0 08
+		LDA $9FEE		;9822  AD EE 9F
+		EOR #$FF		;9825  49 FF
+		STA $9FEE		;9827  8D EE 9F
+		JMP mainloop		;982A  4C 46 90
+;------------------------------------------------------
+read		JSR check_star		;982D  20 2E 99	Block-Read Einsprung
+		BNE $9840		;9830  D0 0E
+		LDY #$00		;9832  A0 00
+		LDA ($F8),Y		;9834  B1 F8
+		STA $9FFE,Y		;9836  99 FE 9F
+		INY			;9839  C8
+		CPY #$02		;983A  C0 02
+		BNE $9834		;983C  D0 F6
+		BEQ $9843		;983E  F0 03
+		JSR $995E		;9840  20 5E 99
+		JSR $993A		;9843  20 3A 99
+		JSR open_dch		;9846  20 4D 99
+		LDA #$31		;9849  A9 31
+		STA $9FA5		;984B  8D A5 9F
+		JSR $996B		;984E  20 6B 99
+		LDX #$02		;9851  A2 02
+		JSR chkin		;9853  20 C6 FF
+		LDY #$00		;9856  A0 00
+		JSR input		;9858  20 57 F1
+		JSR set_konfig		;985B  20 A3 99
+		STA ($F8),Y		;985E  91 F8
+		JSR reset_konfig	;9860  20 AA 99
+		INY			;9863  C8
+		BNE $9858		;9864  D0 F2
+		JMP close_dch		;9866  4C 93 99
+;------------------------------------------------------
+write		JSR check_star		;9869  20 2E 99	"W" Einprung Write Block nach Disk
+		BEQ $9871		;986C  F0 03
+		JSR $995E		;986E  20 5E 99
+		JSR $993A		;9871  20 3A 99
+		JSR open_dch		;9874  20 4D 99
+		LDA #$32		;9877  A9 32
+		STA $9FA5		;9879  8D A5 9F
+		LDX #$0F		;987C  A2 0F
+		JSR ckout		;987E  20 C9 FF
+		BCS $98AE		;9881  B0 2B
+		LDY #$00		;9883  A0 00
+		LDA disk_blockread,Y	;9885  B9 9D 9F
+		JSR print		;9888  20 CA F1
+		INY			;988B  C8
+		CPY #$07		;988C  C0 07
+		BNE $9885		;988E  D0 F5
+		JSR clrch		;9890  20 CC FF
+		LDX #$02		;9893  A2 02
+		JSR ckout		;9895  20 C9 FF
+		LDY #$00		;9898  A0 00
+		JSR set_konfig		;989A  20 A3 99
+		LDA ($F8),Y		;989D  B1 F8
+		JSR reset_konfig	;989F  20 AA 99
+		JSR print		;98A2  20 CA F1
+		INY			;98A5  C8
+		BNE $989A		;98A6  D0 F2
+		JSR clrch		;98A8  20 CC FF
+		JSR $996B		;98AB  20 6B 99
+		JMP close_dch		;98AE  4C 93 99
+;------------------------------------------------------
+zeichout	INC var1		;98B1  E6 FF	"Z" Einprung Binär ausgeben
+		JSR getvonbis		;98B3  20 51 91
+		LDY #$02		;98B6  A0 02
+		STY what2		;98B8  8C F9 9F
+		LDY hunt_ext		;98BB  AC F8 9F
+		STY $23			;98BE  84 23
+		JSR pr_bin		;98C0  20 10 99
+		JSR print_space		;98C3  20 6E 96
+		JSR get_byte		;98C6  20 74 9B
+		JSR binout		;98C9  20 12 92
+		DEC $23			;98CC  C6 23
+		BPL $98C6		;98CE  10 F6
+		JSR checkpointer		;98D0  20 58 92
+		JSR testkeys		;98D3  20 D9 91
+		BNE $98BB		;98D6  D0 E3
+zeichin		JSR get_madr		;98D8  20 E5 91	"'" Einsprung binäre Zeichen einlesen
+		JSR set_konfig		;98DB  20 A3 99
+		LDY #$02		;98DE  A0 02
+		STY what2		;98E0  8C F9 9F
+		LDX #$07		;98E3  A2 07
+		JSR binin		;98E5  20 2E 92
+		LDY #$00		;98E8  A0 00
+		STA (pointer1),Y		;98EA  91 FA
+		JSR incp1		;98EC  20 4C 9B
+		JSR chrgot		;98EF  20 79 00
+		CMP #$0D		;98F2  C9 0D
+		BNE $98E5		;98F4  D0 EF
+		JSR reset_konfig	;98F6  20 AA 99
+		JSR pr_bin		;98F9  20 10 99
+		JSR print_space		;98FC  20 6E 96
+		JMP $9056		;98FF  4C 56 90
+;------------------------------------------------------
+dumpmemchar	BIT doitinasc		;9902  2C FD 9F	ASCII oder Poke-Ausgabe?
+		BMI dumpmemchara	;9905  30 05
+		JSR $9751		;9907  20 51 97	Bytes in Poke ausgeben
+		BEQ dumpmemchar1	;990A  F0 03
+dumpmemchara	JSR dumpasc		;990C  20 BD 91	Bytes in ASCII ausgeben
+dumpmemchar1	RTS			;990F  60
+;------------------------------------------------------
+pr_bin		LDA #''			;9910  A9 27
+		.BYTE $2C		;9912  2C	BIT $xxxx
+pr_poke		LDA #'/			;9913  A9 2F
+		.BYTE $2C
+pr_asc		LDA #'.			;9916  A9 2E
+		.BYTE $2C
+pr_asm		LDA #',			;9919  A9 2C
+		.BYTE $2C
+pr_mem		LDA #':			;991C  A9 3A
+		STA index		;991E  85 22	zwischenspeichern
+		JSR print_cr		;9920  20 6B 96
+		JSR print_prompt	;9923  20 68 96
+		LDA index		;9926  A5 22
+		JSR print		;9928  20 CA F1	und ausgeben
+		JMP pr_pointer1		;992B  4C 58 96
+;------------------------------------------------------
+check_star	JSR chrgot		;992E  20 79 00	auf "*" prüfen
+		CMP #'*			;9931  C9 2A
+		RTS			;9933  60
+;------------------------------------------------------
+check_string	JSR chrgot		;9934  20 79 00
+		CMP #'"'			;9937  C9 22	"
+		RTS			;9939  60
+;------------------------------------------------------
+		LDA #$01		;993A  A9 01
+		LDX #$68		;993C  A2 68
+		LDY #$9B		;993E  A0 9B
+		JSR setnam		;9940  20 BD FF
+		LDA #$02		;9943  A9 02
+		LDX #$08		;9945  A2 08
+		TAY			;9947  A8
+		JSR setfls		;9948  20 BA FF
+		BNE $995A		;994B  D0 0D
+open_dch	LDA #$00		;994D  A9 00
+		JSR setnam		;994F  20 BD FF
+open_dch_name	LDA #15			;9952  A9 0F	open 15,8,15
+		LDX #8			;9954  A2 08
+		TAY			;9956  A8
+		JSR setfls		;9957  20 BA FF
+		JSR open		;995A  20 C0 FF
+		RTS			;995D  60
+;------------------------------------------------------
+		JSR hextobyte		;995E  20 83 91
+		STA $9FFE		;9961  8D FE 9F
+		JSR hextobyte		;9964  20 83 91
+		STA $9FFF		;9967  8D FF 9F
+		RTS			;996A  60
+;------------------------------------------------------
+		LDX #$0F		;996B  A2 0F
+		JSR ckout		;996D  20 C9 FF
+		BCS close_dch		;9970  B0 21
+		LDY #$00		;9972  A0 00
+		LDA disk_u1,Y		;9974  B9 A4 9F
+		JSR print		;9977  20 CA F1
+		INY			;997A  C8
+		CPY #$07		;997B  C0 07
+		BNE $9974		;997D  D0 F5
+		LDA #$00		;997F  A9 00
+		LDX $9FFE		;9981  AE FE 9F
+		JSR $964A		;9984  20 4A 96
+		LDA #$00		;9987  A9 00
+		LDX $9FFF		;9989  AE FF 9F
+		JSR $964A		;998C  20 4A 96
+		JSR clrch		;998F  20 CC FF
+		RTS			;9992  60
+;------------------------------------------------------
+close_dch	JSR clrch		;9993  20 CC FF
+		LDA #$0F		;9996  A9 0F
+		JSR close		;9998  20 C3 FF
+		LDA #$02		;999B  A9 02
+		JSR close		;999D  20 C3 FF
+		JMP mainloop		;99A0  4C 46 90
+;------------------------------------------------------
+set_konfig	SEI			;99A3  78	Speicherkonfiguration
+		LDX save_konfig		;99A4  AE E7 9F	holen
+		STX r6510		;99A7  86 01	und setzen
+		RTS			;99A9  60
+;------------------------------------------------------
+reset_konfig	LDX #$37		;99AA  A2 37	Speicherkonfiguration
+		STX r6510		;99AC  86 01	bei $01 in den Normalzustand
+		CLI			;99AE  58
+		RTS			;99AF  60
+;------------------------------------------------------
+disasm		INC var1		;99B0  E6 FF	"D" Einsprung Disasseble
+		INC what3		;99B2  EE E8 9F
+		JSR getvonbis		;99B5  20 51 91
+		JSR pr_asm		;99B8  20 19 99
+		JSR print_space		;99BB  20 6E 96
+		LDX #$14		;99BE  A2 14
+		LDA #$20		;99C0  A9 20
+		STA $0202,X		;99C2  9D 02 02
+		DEX			;99C5  CA
+		BPL $99C2		;99C6  10 FA
+		LDY #$00		;99C8  A0 00
+		STY linelen		;99CA  84 B6
+		JSR get_byte		;99CC  20 74 9B
+		STA $9FFA		;99CF  8D FA 9F
+		LDX #$00		;99D2  A2 00
+		CMP asmcmdlist,Y	;99D4  D9 63 9E
+		BEQ $99E7		;99D7  F0 0E
+		INY			;99D9  C8
+		CPY #$E1		;99DA  C0 E1
+		BEQ $99E7		;99DC  F0 09
+		INX			;99DE  E8
+		CPX #$09		;99DF  E0 09
+		BNE $99D4		;99E1  D0 F1
+		INC linelen		;99E3  E6 B6
+		BNE $99D2		;99E5  D0 EB
+		JSR $9AE2		;99E7  20 E2 9A
+		CPX #$15		;99EA  E0 15
+		BCC $99F1		;99EC  90 03
+		JMP $9A5E		;99EE  4C 5E 9A
+;------------------------------------------------------
+		LDA what2		;99F1  AD F9 9F
+		CLC		;99F4  18
+		SBC linelen		;99F5  E5 B6
+		TAY			;99F7  A8
+		INY			;99F8  C8
+		LDA #$9A		;99F9  A9 9A
+		PHA			;99FB  48
+		LDA $9FEF,Y		;99FC  B9 EF 9F
+		PHA			;99FF  48
+		RTS			;9A00  60
+;------------------------------------------------------
+		LDA $9FFA		;9A01  AD FA 9F
+		AND #$0F		;9A04  29 0F
+		CMP #$0A		;9A06  C9 0A
+		BEQ $9A0D		;9A08  F0 03
+		JSR $9B81		;9A0A  20 81 9B
+		JMP $9AA9		;9A0D  4C A9 9A
+;------------------------------------------------------
+		JSR $9B89		;9A10  20 89 9B
+		JMP $9AA9		;9A13  4C A9 9A
+;------------------------------------------------------
+		JSR $9B9C		;9A16  20 9C 9B
+		JMP $9AA9		;9A19  4C A9 9A
+;------------------------------------------------------
+		JSR $9B9C		;9A1C  20 9C 9B
+		JMP $9A25		;9A1F  4C 25 9A
+;------------------------------------------------------
+		JSR $9B89		;9A22  20 89 9B
+		JSR $9B64		;9A25  20 64 9B
+		JSR $9B5E		;9A28  20 5E 9B
+		JMP $9AA9		;9A2B  4C A9 9A
+;------------------------------------------------------
+		JSR $9B9C		;9A2E  20 9C 9B
+		JMP $9A37		;9A31  4C 37 9A
+;------------------------------------------------------
+		JSR $9B89		;9A34  20 89 9B
+		JSR $9B64		;9A37  20 64 9B
+		JSR $9B61		;9A3A  20 61 9B
+		JMP $9AA9		;9A3D  4C A9 9A
+;------------------------------------------------------
+		JSR $9B86		;9A40  20 86 9B
+		JSR $9B64		;9A43  20 64 9B
+		JSR $9B5E		;9A46  20 5E 9B
+		JSR $9B58		;9A49  20 58 9B
+		JMP $9AA9		;9A4C  4C A9 9A
+;------------------------------------------------------
+		JSR $9B86		;9A4F  20 86 9B
+		JSR $9B58		;9A52  20 58 9B
+		JSR $9B64		;9A55  20 64 9B
+		JSR $9B61		;9A58  20 61 9B
+		JMP $9AA9		;9A5B  4C A9 9A
+;------------------------------------------------------
+		LDA what2		;9A5E  AD F9 9F
+		CMP #$C5		;9A61  C9 C5
+		BCC $9A83		;9A63  90 1E
+		CMP #$E0		;9A65  C9 E0
+		BEQ $9A77		;9A67  F0 0E
+		CMP #$CF		;9A69  C9 CF
+		BEQ $9A71		;9A6B  F0 04
+		CMP #$DF		;9A6D  C9 DF
+		BNE $9A74		;9A6F  D0 03
+		JSR $9B9C		;9A71  20 9C 9B
+		JMP $9AA9		;9A74  4C A9 9A
+;------------------------------------------------------
+		JSR $9B5B		;9A77  20 5B 9B
+		JSR $9B9C		;9A7A  20 9C 9B
+		JSR $9B58		;9A7D  20 58 9B
+		JMP $9AA9		;9A80  4C A9 9A
+;------------------------------------------------------
+		JSR $9B6A		;9A83  20 6A 9B
+		JSR get_byte		;9A86  20 74 9B
+		LDY #$03		;9A89  A0 03
+		JSR $9B31		;9A8B  20 31 9B
+		STA var2		;9A8E  85 02
+		CLC		;9A90  18
+		ADC pointer1		;9A91  65 FA
+		STA $FE		;9A93  85 FE
+		LDA pointer1+1		;9A95  A5 FB
+		ADC #$00		;9A97  69 00
+		LDX var2		;9A99  A6 02
+		BPL $9A9F		;9A9B  10 02
+		SBC #$00		;9A9D  E9 00
+		LDY prg_pointer		;9A9F  A4 7A
+		JSR $9B31		;9AA1  20 31 9B
+		LDA $FE		;9AA4  A5 FE
+		JSR $9B31		;9AA6  20 31 9B
+		LDY #$00		;9AA9  A0 00
+		LDA inputbuffer,Y		;9AAB  B9 00 02
+		JSR print		;9AAE  20 CA F1
+		INY			;9AB1  C8
+		CPY #$15		;9AB2  C0 15
+		BNE $9AAB		;9AB4  D0 F5
+		LDA what3		;9AB6  AD E8 9F
+		BNE $9ABC		;9AB9  D0 01
+		RTS			;9ABB  60
+;------------------------------------------------------
+		JSR checkpointer		;9ABC  20 58 92
+		JSR testkeys		;9ABF  20 D9 91
+		BIT $9FEE		;9AC2  2C EE 9F
+		BMI $9ADF		;9AC5  30 18
+		LDY hunt_ext		;9AC7  AC F8 9F
+		CPY #$34		;9ACA  C0 34
+		BCC $9ADF		;9ACC  90 11
+		CPY #$39		;9ACE  C0 39
+		BEQ $9ADF		;9AD0  F0 0D
+		JSR print_cr		;9AD2  20 6B 96
+		LDY #$1E		;9AD5  A0 1E
+		LDA #$2D		;9AD7  A9 2D
+		JSR print		;9AD9  20 CA F1
+		DEY			;9ADC  88
+		BPL $9AD9		;9ADD  10 FA
+		JMP $99B8		;9ADF  4C B8 99
+;------------------------------------------------------
+		LDX linelen		;9AE2  A6 B6
+		CPX #$15		;9AE4  E0 15
+		BCC $9AED		;9AE6  90 05
+		TYA			;9AE8  98
+		SEC			;9AE9  38
+		SBC #$A8		;9AEA  E9 A8
+		TAX			;9AEC  AA
+		STX hunt_ext		;9AED  8E F8 9F
+		STY what2		;9AF0  8C F9 9F
+		LDA $9FFA		;9AF3  AD FA 9F
+		LDY #$00		;9AF6  A0 00
+		JSR $9B31		;9AF8  20 31 9B
+		LDX hunt_ext		;9AFB  AE F8 9F
+		JSR $9B16		;9AFE  20 16 9B
+		LDY what2		;9B01  AC F9 9F
+		CPY #$E1		;9B04  C0 E1
+		BEQ $9B11		;9B06  F0 09
+		TXA			;9B08  8A
+		ASL A		;9B09  0A
+		ASL A		;9B0A  0A
+		ASL A		;9B0B  0A
+		ADC linelen		;9B0C  65 B6
+		STA linelen		;9B0E  85 B6
+		RTS			;9B10  60
+;------------------------------------------------------
+		PLA			;9B11  68
+		PLA			;9B12  68
+		JMP $9AA9		;9B13  4C A9 9A
+;------------------------------------------------------
+		LDY #$0A		;9B16  A0 0A
+		LDA distab1,X		;9B18  BD B5 9D
+		STA inputbuffer,Y		;9B1B  99 00 02
+		INY			;9B1E  C8
+		LDA distab2,X		;9B1F  BD EF 9D
+		STA inputbuffer,Y		;9B22  99 00 02
+		INY			;9B25  C8
+		LDA distab3,X		;9B26  BD 29 9E
+		STA inputbuffer,Y		;9B29  99 00 02
+		INY			;9B2C  C8
+		INY			;9B2D  C8
+		STY prg_pointer		;9B2E  84 7A
+		RTS			;9B30  60
+;------------------------------------------------------
+		PHA			;9B31  48
+		PHA			;9B32  48
+		LSR A		;9B33  4A
+		LSR A		;9B34  4A
+		LSR A		;9B35  4A
+		LSR A		;9B36  4A
+		TAX			;9B37  AA
+		LDA hexnumbers,X	;9B38  BD 71 9F
+		STA inputbuffer,Y		;9B3B  99 00 02
+		INY			;9B3E  C8
+		PLA			;9B3F  68
+		AND #$0F		;9B40  29 0F
+		TAX			;9B42  AA
+		LDA hexnumbers,X	;9B43  BD 71 9F
+		STA inputbuffer,Y		;9B46  99 00 02
+		INY			;9B49  C8
+		PLA			;9B4A  68
+		RTS			;9B4B  60
+;------------------------------------------------------
+incp1		INC pointer1		;9B4C  E6 FA	;Pointer 1 inkementieren
+		BNE incp1e		;9B4E  D0 07
+		INC pointer1+1		;9B50  E6 FB
+		BNE incp1e		;9B52  D0 03
+		DEC wrap_around		;9B54  CE FB 9F
+incp1e		RTS			;9B57  60
+;------------------------------------------------------
+		LDA #')'		;9B58  
+		.BYTE $2C
+		LDA #'('		;9B5B
+		.BYTE $2C
+		LDA #'X'		;9B5E
+		.BYTE $2C
+		LDA #'Y'		;9B61
+		.BYTE $2C
+		LDA #','		;9B64
+		.BYTE $2C
+		LDA #'#'		;9B67
+		.BYTE $2C
+		LDA #'$'		;9B6A
+		LDY prg_pointer		;9B6C  A4 7A
+		STA inputbuffer,Y	;9B6E  99 00 02
+		INC prg_pointer		;9B71  E6 7A
+		RTS			;9B73  60
+;------------------------------------------------------
+get_byte	LDY #$00		;9B74  A0 00
+		JSR set_konfig		;9B76  20 A3 99
+		LDA (pointer1),Y	;9B79  B1 FA
+		JSR reset_konfig	;9B7B  20 AA 99
+		JMP incp1		;9B7E  4C 4C 9B
+;------------------------------------------------------
+		JSR $9B67		;9B81  20 67 9B
+		BNE $9B89		;9B84  D0 03
+		JSR $9B5B		;9B86  20 5B 9B
+		JSR $9B6A		;9B89  20 6A 9B
+		JSR get_byte		;9B8C  20 74 9B
+		LDY #$03		;9B8F  A0 03
+		JSR $9B31		;9B91  20 31 9B
+		LDY prg_pointer		;9B94  A4 7A
+		JSR $9B31		;9B96  20 31 9B
+		STY prg_pointer		;9B99  84 7A
+		RTS			;9B9B  60
+;------------------------------------------------------
+		JSR $9B6A		;9B9C  20 6A 9B
+		JSR get_byte		;9B9F  20 74 9B
+		PHA			;9BA2  48
+		LDY #$03		;9BA3  A0 03
+		JSR $9B31		;9BA5  20 31 9B
+		JSR get_byte		;9BA8  20 74 9B
+		LDY #$06		;9BAB  A0 06
+		JSR $9B31		;9BAD  20 31 9B
+		LDY prg_pointer		;9BB0  A4 7A
+		JSR $9B31		;9BB2  20 31 9B
+		PLA			;9BB5  68
+		JSR $9B31		;9BB6  20 31 9B
+		STY prg_pointer		;9BB9  84 7A
+		RTS			;9BBB  60
+;------------------------------------------------------
+assem		JSR get_madr		;9BBC  20 E5 91	"," Einprung Asseble einen Befehl
+		LDY #$00		;9BBF  A0 00
+		STY var2		;9BC1  84 02
+		DEY			;9BC3  88
+		JSR set_konfig		;9BC4  20 A3 99
+		LDX #$11		;9BC7  A2 11
+		LDA inputbuffer,X		;9BC9  BD 00 02
+		INY			;9BCC  C8
+		CPY #$39		;9BCD  C0 39
+		BNE $9BDE		;9BCF  D0 0D
+		CMP #$22		;9BD1  C9 22
+		BEQ $9C02		;9BD3  F0 2D
+		CMP #$24		;9BD5  C9 24
+		BEQ $9C22		;9BD7  F0 49
+		INX			;9BD9  E8
+		INX			;9BDA  E8
+		JMP errorout		;9BDB  4C B7 91
+;------------------------------------------------------
+		CMP distab1,Y		;9BDE  D9 B5 9D
+		BNE $9BCC		;9BE1  D0 E9
+		INX			;9BE3  E8
+		LDA inputbuffer,X		;9BE4  BD 00 02
+		CMP distab2,Y		;9BE7  D9 EF 9D
+		BNE $9BC7		;9BEA  D0 DB
+		INX			;9BEC  E8
+		LDA inputbuffer,X		;9BED  BD 00 02
+		CMP distab3,Y		;9BF0  D9 29 9E
+		BNE $9BC7		;9BF3  D0 D2
+		STY hunt_ext		;9BF5  8C F8 9F
+		LDX #$15		;9BF8  A2 15
+		STX prg_pointer		;9BFA  86 7A
+		CPY #$15		;9BFC  C0 15
+		BCS $9C32		;9BFE  B0 32
+		BCC $9C73		;9C00  90 71
+		JSR $91F4		;9C02  20 F4 91
+		BEQ $9BD9		;9C05  F0 D2
+		LDY #$00		;9C07  A0 00
+		LDA (pointer4),Y		;9C09  B1 BB
+		STA (pointer1),Y		;9C0B  91 FA
+		INY			;9C0D  C8
+		CPY fnamelen		;9C0E  C4 B7
+		BNE $9C09		;9C10  D0 F7
+		TYA			;9C12  98
+		CLC		;9C13  18
+		ADC pointer1		;9C14  65 FA
+		STA pointer1		;9C16  85 FA
+		BCC $9C1C		;9C18  90 02
+		INC pointer1+1		;9C1A  E6 FB
+		JSR reset_konfig	;9C1C  20 AA 99
+		JSR $9D4D		;9C1F  20 4D 9D
+		INX			;9C22  E8
+		STX prg_pointer		;9C23  86 7A
+		JSR hextobyte		;9C25  20 83 91
+		LDY #$00		;9C28  A0 00
+		STA (pointer1),Y		;9C2A  91 FA
+		JSR incp1		;9C2C  20 4C 9B
+		JMP $9C1C		;9C2F  4C 1C 9C
+;------------------------------------------------------
+		LDA #$A8		;9C32  A9 A8
+		CLC		;9C34  18
+		ADC hunt_ext		;9C35  6D F8 9F
+		STA hunt_ext		;9C38  8D F8 9F
+		CMP #$C5		;9C3B  C9 C5
+		BCC $9C5E		;9C3D  90 1F
+		CMP #$DF		;9C3F  C9 DF
+		BEQ $9C49		;9C41  F0 06
+		CMP #$CF		;9C43  C9 CF
+		BNE $9C5B		;9C45  D0 14
+		BEQ $9C55		;9C47  F0 0C
+		LDA inputbuffer,X		;9C49  BD 00 02
+		CMP #$28		;9C4C  C9 28
+		BNE $9C55		;9C4E  D0 05
+		INC hunt_ext		;9C50  EE F8 9F
+		INC prg_pointer		;9C53  E6 7A
+		JSR $9D63		;9C55  20 63 9D
+		JSR $9D83		;9C58  20 83 9D
+		JMP $9D1B		;9C5B  4C 1B 9D
+;------------------------------------------------------
+		JSR $9D63		;9C5E  20 63 9D
+		JSR hex2ndbyte		;9C61  20 88 91
+		JSR hex2ndbyte		;9C64  20 88 91
+		CLC		;9C67  18
+		SBC pointer1		;9C68  E5 FA
+		TAY			;9C6A  A8
+		DEY			;9C6B  88
+		STY inputbuffer+1		;9C6C  8C 01 02
+		INC var2		;9C6F  E6 02
+		BNE $9C5B		;9C71  D0 E8
+		TYA			;9C73  98
+		ASL A		;9C74  0A
+		ASL A		;9C75  0A
+		ASL A		;9C76  0A
+		CLC		;9C77  18
+		ADC hunt_ext		;9C78  6D F8 9F
+		STA hunt_ext		;9C7B  8D F8 9F
+		LDX #$14		;9C7E  A2 14
+		CPX linelen		;9C80  E4 B6
+		BCC $9C96		;9C82  90 12
+		TAY			;9C84  A8
+		LDA asmcmdlist,Y		;9C85  B9 63 9E
+		PHA			;9C88  48
+		AND #$0F		;9C89  29 0F
+		CMP #$0A		;9C8B  C9 0A
+		BEQ $9C92		;9C8D  F0 03
+		JMP errormainl		;9C8F  4C B1 90
+;------------------------------------------------------
+		PLA			;9C92  68
+		JMP $9D1B		;9C93  4C 1B 9D
+;------------------------------------------------------
+		LDX #$15		;9C96  A2 15
+		INC prg_pointer		;9C98  E6 7A
+		LDA inputbuffer,X		;9C9A  BD 00 02
+		CMP #$23		;9C9D  C9 23
+		BEQ $9CAC		;9C9F  F0 0B
+		CMP #$24		;9CA1  C9 24
+		BEQ $9CB2		;9CA3  F0 0D
+		CMP #$28		;9CA5  C9 28
+		BEQ $9CF0		;9CA7  F0 47
+		JMP errorout		;9CA9  4C B7 91
+;------------------------------------------------------
+		JSR $9D73		;9CAC  20 73 9D
+		JMP $9D1B		;9CAF  4C 1B 9D
+;------------------------------------------------------
+		LDX linelen		;9CB2  A6 B6
+		CPX #$1B		;9CB4  E0 1B
+		BCC $9CC4		;9CB6  90 0C
+		JSR $9D83		;9CB8  20 83 9D
+		JSR $9D5A		;9CBB  20 5A 9D
+		JSR $9D9A		;9CBE  20 9A 9D
+		JMP $9D1B		;9CC1  4C 1B 9D
+;------------------------------------------------------
+		INC hunt_ext		;9CC4  EE F8 9F
+		INC hunt_ext		;9CC7  EE F8 9F
+		LDX #$18		;9CCA  A2 18
+		LDA inputbuffer,X		;9CCC  BD 00 02
+		CMP #$2C		;9CCF  C9 2C
+		BEQ $9CDD		;9CD1  F0 0A
+		CMP #$0D		;9CD3  C9 0D
+		BEQ $9CE7		;9CD5  F0 10
+		JSR $9D83		;9CD7  20 83 9D
+		JMP $9D1B		;9CDA  4C 1B 9D
+;------------------------------------------------------
+		JSR $9D76		;9CDD  20 76 9D
+		INX			;9CE0  E8
+		JSR $9D9A		;9CE1  20 9A 9D
+		JMP $9D1B		;9CE4  4C 1B 9D
+;------------------------------------------------------
+		JSR $9D76		;9CE7  20 76 9D
+		DEC hunt_ext		;9CEA  CE F8 9F
+		JMP $9D1B		;9CED  4C 1B 9D
+;------------------------------------------------------
+		JSR $9D73		;9CF0  20 73 9D
+		INC prg_pointer		;9CF3  E6 7A
+		LDA inputbuffer,X		;9CF5  BD 00 02
+		CMP #$29		;9CF8  C9 29
+		BNE $9D05		;9CFA  D0 09
+		JSR $9D5A		;9CFC  20 5A 9D
+		JSR $9D60		;9CFF  20 60 9D
+		SEC			;9D02  38
+		BCS $9D13		;9D03  B0 0E
+		CMP #$2C		;9D05  C9 2C
+		BEQ $9D0C		;9D07  F0 03
+		JMP errorout		;9D09  4C B7 91
+;------------------------------------------------------
+		JSR $9D5D		;9D0C  20 5D 9D
+		JSR $9D57		;9D0F  20 57 9D
+		CLC		;9D12  18
+		LDA #$07		;9D13  A9 07
+		ADC hunt_ext		;9D15  6D F8 9F
+		STA hunt_ext		;9D18  8D F8 9F
+		LDY hunt_ext		;9D1B  AC F8 9F
+		LDA asmcmdlist,Y		;9D1E  B9 63 9E
+		CMP #$69		;9D21  C9 69
+		BNE $9D2C		;9D23  D0 07
+		CPY #$00		;9D25  C0 00
+		BEQ $9D2C		;9D27  F0 03
+		JMP errormainl		;9D29  4C B1 90
+;------------------------------------------------------
+		LDY #$00		;9D2C  A0 00
+		STY cursorcol		;9D2E  84 D3
+		STA (pointer1),Y		;9D30  91 FA
+		LDX var2		;9D32  A6 02
+		BEQ $9D40		;9D34  F0 0A
+		LDA inputbuffer+1,Y		;9D36  B9 01 02
+		INY			;9D39  C8
+		STA (pointer1),Y		;9D3A  91 FA
+		CPY var2		;9D3C  C4 02
+		BNE $9D36		;9D3E  D0 F6
+		JSR reset_konfig	;9D40  20 AA 99
+		LDA #$2C		;9D43  A9 2C
+		STA index		;9D45  85 22
+		JSR $9923		;9D47  20 23 99
+		JSR $99BB		;9D4A  20 BB 99
+		JSR pr_asm		;9D4D  20 19 99
+		LDA #$12		;9D50  A9 12
+		STA cursorcol		;9D52  85 D3
+		JMP $9056		;9D54  4C 56 90
+;------------------------------------------------------
+		LDA #$29		;9D57  A9 29
+		BIT $2CA9		;9D59  2C A9 2C
+		BIT $58A9		;9D5C  2C A9 58
+		BIT $59A9		;9D5F  2C A9 59
+		BIT $24A9		;9D62  2C A9 24
+		LDX prg_pointer		;9D65  A6 7A
+		CMP inputbuffer,X		;9D67  DD 00 02
+		BNE $9D70		;9D6A  D0 04
+		INX			;9D6C  E8
+		STX prg_pointer		;9D6D  86 7A
+		RTS			;9D6F  60
+;------------------------------------------------------
+		JMP errorout		;9D70  4C B7 91
+;------------------------------------------------------
+		JSR $9D63		;9D73  20 63 9D
+		LDX prg_pointer		;9D76  A6 7A
+		JSR hex2ndbyte		;9D78  20 88 91
+		LDY #$00		;9D7B  A0 00
+		STA inputbuffer+1,Y		;9D7D  99 01 02
+		INC var2		;9D80  E6 02
+		RTS			;9D82  60
+;------------------------------------------------------
+		LDX prg_pointer		;9D83  A6 7A
+		JSR hex2ndbyte		;9D85  20 88 91
+		PHA			;9D88  48
+		JSR hex2ndbyte		;9D89  20 88 91
+		LDY #$00		;9D8C  A0 00
+		STA inputbuffer+1,Y		;9D8E  99 01 02
+		INY			;9D91  C8
+		PLA			;9D92  68
+		STA inputbuffer+1,Y		;9D93  99 01 02
+		INY			;9D96  C8
+		STY var2		;9D97  84 02
+		RTS			;9D99  60
+;------------------------------------------------------
+		LDA inputbuffer,X		;9D9A  BD 00 02
+		CMP #$59		;9D9D  C9 59
+		BNE $9DA4		;9D9F  D0 03
+		SEC			;9DA1  38
+		BCS $9DA9		;9DA2  B0 05
+		CMP #$58		;9DA4  C9 58
+		BNE $9DB2		;9DA6  D0 0A
+		CLC		;9DA8  18
+		LDA hunt_ext		;9DA9  AD F8 9F
+		ADC #$03		;9DAC  69 03
+		STA hunt_ext		;9DAE  8D F8 9F
+		RTS			;9DB1  60
+;------------------------------------------------------
+		JMP errorout		;9DB2  4C B7 91
+;------------------------------------------------------
+;Disassembletabellen
+distab1		.BYTE "AAABCCCDEILLLLORRSSSSBBBBBBBBTTTTTTPPPPJNCSCSCCSDIDIBRRJJ?"	;9DB5
+distab2		.BYTE "DNSIMPPEONDDDSROOBTTTPMVVCCNEXAYASXHLHLSOLELELLEENENRTTMM?"	;9DEF
+distab3		.BYTE "CDLTPXYCRCAXYRALRCAXYLICSCSEQAXAYXSPPAARPCCIIVDDYYXXKISPP?"	;9E29
+
+;Befehlsliste 9e63
+asmcmdlist	.BYTE $69, $65, $6D, $7D, $79 
+		.BYTE $75, $69, $61, $71, $29, $25, $2D, $3D
+		.BYTE $39, $35, $69, $21, $31, $0A, $06, $0E
+		.BYTE $1E, $69, $16, $69, $69, $69, $69, $24
+		.BYTE $2C, $69, $69, $69, $69, $69, $69, $C9
+		.BYTE $C5, $CD, $DD, $D9, $D5, $69, $C1, $D1
+		.BYTE $E0, $E4, $EC, $69, $69, $69, $69, $69
+		.BYTE $69, $C0, $C4, $CC, $69, $69, $69, $69
+		.BYTE $69, $69, $69, $C6, $CE, $DE, $69, $D6
+		.BYTE $69, $69, $69, $49, $45, $4D, $5D, $59
+		.BYTE $55, $69, $41, $51, $69, $E6, $EE, $FD
+		.BYTE $69, $F6, $69, $69, $69, $A9, $A5, $AD
+		.BYTE $BD, $B9, $B5, $69, $A1, $B1, $A2, $A6
+		.BYTE $AE, $69, $BE, $69, $B6, $69, $69, $A0
+		.BYTE $A4, $AC, $BC, $69, $B4, $69, $69, $69
+		.BYTE $4A, $46, $4E, $5E, $69, $56, $69, $69
+		.BYTE $69, $09, $05, $0D, $1D, $19, $15, $69
+		.BYTE $01, $11, $2A, $26, $2E, $3E, $69, $36
+		.BYTE $69, $69, $69, $6A, $66, $6E, $7E, $69
+		.BYTE $76, $69, $69, $69, $E9, $E5, $ED, $FD
+		.BYTE $F9, $F5, $69, $E1, $F1, $69, $85, $8D
+		.BYTE $9D, $99, $95, $69, $81, $91, $69, $86
+		.BYTE $8E, $69, $69, $69, $96, $69, $69, $69
+		.BYTE $84, $8C, $69, $69, $94, $69, $69, $69
+		.BYTE $10, $30, $50, $70, $90, $B0, $D0, $F0
+		.BYTE $8A, $AA, $98, $A8, $BA, $9A, $08, $28
+		.BYTE $48, $68, $20, $EA, $18, $38, $58, $78
+		.BYTE $B8, $D8, $F8, $88, $C8, $CA, $E8, $00
+		.BYTE $40, $60, $4C, $6C
+
+exit		JMP (basic_nmi_vec)	;9F44		Ausgang über NMI-Vector
+
+registertext	.BYTE 13,"    PC  IRQ  SP AC XR YR SR  NV-BDIZC",13
+		.BYTE ">; "
+regtextlen	= *-registertext
+hexnumbers	.BYTE "0123456789ABCDEF"
+
+cmdletters	.BYTE 13,"XMR:FCKH@LSOTUA.;GP/VD,*WZ'"	;9F81...
+cmdletterlen	= *-cmdletters
+
+disk_blockread	.byte "B-P 2 0"				;9F9D
+disk_u1		.byte "U1:2 0 10"			;9fa4
+
+binnumbers	.BYTE "10*."		;9FAB  31 30 2A 2E
+
+		;9faf
+cmdveclo	.BYTE <mainloop-1, <exit-1,    <memory-1,    <reg_read-1
+		.BYTE <get_hex-1,  <fill-1,    <compare-1,   <konfig-1
+		.BYTE <hunt-1,     <diskcmd-1, <rload-1,     <save_spr-1
+		.BYTE <old-1,      <transfer-1,<umrechnung-1,<ascii-1
+		.BYTE <get_ascii-1,<get_reg-1, <goto-1,      <poke-1
+		.BYTE <get_poke-1, <verify-1,  <disasm-1,    <assem-1
+		.BYTE <star,       <write-1,   <zeichout-1,  <zeichin-1
+
+		;9fcb
+cmdvechi	.BYTE >mainloop-1, >exit-1,    >memory-1,    >reg_read-1
+		.BYTE >get_hex-1,  >fill-1,    >compare-1,   >konfig-1
+		.BYTE >hunt-1,     >diskcmd-1, >rload-1,     >save_spr-1
+		.BYTE >old-1,      >transfer-1,>umrechnung-1,>ascii-1
+		.BYTE >get_ascii-1,>get_reg-1, >goto-1,      >poke-1
+		.BYTE >get_poke-1, >verify-1,  >disasm-1,    >assem-1
+		.BYTE >star,       >write-1,   >zeichout-1,  >zeichin-1
+
+save_konfig	.BYTE $37		;9FE7  37	Inhalt von $01, Speicherkonfiguration
+what3		.BYTE $01		;9FE8  01 
+save_pc		.WORD $E146		;9FE9  46 E1	Zwischenspeicher für PC
+save_irq	.WORD $EA31		;9FEB  31 EA	Zwischenspeicher für IRQ
+save_status	.BYTE $F8		;9FED  F8	Zwischenspeicher für Statusregister
+		BRK		;9FEE  00
+;------------------------------------------------------
+		BRK		;9FEF  00
+;------------------------------------------------------
+		???			;9FF0  0F
+		ORA $1B,X		;9FF1  15 1B
+		AND $3321		;9FF3  2D 21 33
+		???			;9FF6  3F
+		LSR 			;9FF7  4E 
+hunt_ext	.BYTE $0D		;9FF8  0D	erweiterte Suche bei hunt
+what2		.BYTE $77		;9FF9  77
+		.BYTE $4E		;9FFA  4E
+wrap_around	.BYTE $00		;9FFB  00	Überlauf $FFFF nach $0000 ist aufgetreten
+		.BYTE $00		;9FFC  00 
+doitinasc	.BYTE $80		;9FFD  80	80-Memory-Ausgabe in ASC, 00-Poke
+		BRK		;9FFE  00
+;------------------------------------------------------
+		BMI $9F95		;9FFF  30 94
+
+		BMI $9F95		;9FFF  30 
+
+.end
+
+>:9FE8 00 46 E1 31 EA F8 00 00 .Fá1êø..
+>:9FF0 0F 15 1B 2D 21 33 3F 4E ...-!3?N
+>:9FF8 00 00 30 00 00 80 00 30 ..0....0
+

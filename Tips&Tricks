@@ -1,0 +1,37 @@
+;Zwei Wege alle Register zu Speichern
+;------------------------------------
+	sta sys_a
+	stx sys_x
+	sty sys_y
+	...
+	ldy sys_y
+	ldx sys_x
+	lda sys_a
+--------------------
+24 Zyklen
+18 Bytes
+	
+	pha
+	txa
+	pha
+	tya
+	pha
+	tsx
+	lda stack+3,x
+	...
+	pla 
+	tay
+	pla 
+	tax
+	pla
+---------------------
+35 Zyklen
+14 Bytes
+
+;Filenamenlänge festlegen
+;------------------------------------
+		lda #fnamelen
+		...
+fname		.byte "FILENAME"
+fnamelen	= *-fname
+

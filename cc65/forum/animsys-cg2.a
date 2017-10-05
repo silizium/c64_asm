@@ -1,0 +1,165 @@
+!to "animsys-cg2.prg",cbm 
+
+*= $0800 
+!byte $00,$0c,$08,$0a,$00,$9e,$32,$31,$32,$38,$00,$00,$00,$00 
+				
+				
+	anzahlChars1 	!byte $00		; Anzahl der Buchstaben im String1 
+	anzahlChars2 	!byte $00		; Anzahl der Buchstaben im String2 
+	anzahlChars3 	!byte $00		; Anzahl der Buchstaben im String3 
+	anzahlChars4 	!byte $00		; Anzahl der Buchstaben im String4 
+	anzahlChars5 	!byte $00		; Anzahl der Buchstaben im String5 
+
+	counter1 	 	!byte $05		; Zaehler1 
+	counter2 	 	!byte $0a		; Zaehler2 
+	counter3 	 	!byte $01		; Zaehler3 
+	counter4	 	!byte $0e		; Zaehler4 
+	counter5	 	!byte $1a		; Zaehler5 
+ 
+	ba_sprungTabLo	!fill  6, $00	; Für jeden Kanal ein Wort mit dem Sprungziel
+	ba_sprungTabHi	!fill  6, $00	; Für jeden Kanal ein Wort mit dem Sprungziel 
+	ba_KanalDelay	!fill  6, $00	; Eine Liste von Countern. Ist ein Counter abgelaufen müssen neue Animationsschritte geholt werden 
+	ba_kanalPointLo	!fill  6, $00	; Für jeden Kanal einen Zeiger in die Aufgabenliste 
+	ba_kanalPointHi	!fill  6, $00	; Für jeden Kanal einen Zeiger in die Aufgabenliste 
+
+	FrameCounter	 	!byte $01	
+	
+	c_kanaele		=  	 01		; 2 Kanäle. 	
+
+								*= $0850  
+																 
+ 	   								sei 
+									lda #$7f 
+									sta $dc0d 
+									lda $dc0d 
+									lda #$32 
+									sta $d012 
+									lda $d011 
+									and #$7f 
+									sta $d011 
+									lda #$01 
+									sta $d01a 
+									ldx #<irq 
+									ldy #>irq 
+									stx $0314 
+									sty $0315 
+									jsr $e544 
+									Jsr s_Init
+									cli 
+							endlos	Jsr Main 
+									lda FrameCounter
+							FrC_Wait	cmp FrameCounter 
+									beq FrC_Wait
+									bne endlos ; Ein "Branch Always", bei Gleich wäre er ja in der Schleife geblieben 
+ 
+					
+							s_Init	lda #<ba_animationList
+									ldx #>ba_animationList  
+									sta ba_kanalPointLo+1
+									stx ba_kanalPointHi+1 
+
+									lda #<ba_animationList0 
+									ldx #>ba_animationList0	
+									sta ba_kanalPointLo+0
+									stx ba_kanalPointHi+0	
+									rts 	
+																	
+									;ldx c_kanaele
+							 Main		ldx c_kanaele ; Initialisierung
+						   	 kanalLoop	lda ba_KanalDelay,x 
+									bne kanalOK 
+									
+									; Couner ist abgelaufen: Daten aus dem Kanal lesen. 
+									jsr s_readByte 
+									sta ba_sprungTabLo,x 
+									jsr s_readByte 
+									sta ba_sprungTabHi,x 
+									jsr s_readByte 
+									sta ba_KanalDelay,x 
+									    	   	 	
+						
+							   kanalOK	lda ba_sprungTabLo,x 
+									sta sprung+1 
+									lda ba_sprungTabHi,x 
+									sta sprung+2 
+						     	    sprung	jsr 12345 
+									dex 
+									bpl kanalLoop 
+									rts 
+
+						 	s_readByte	lda ba_kanalPointLo,x 
+									sta read+1 
+									lda ba_kanalPointHi,x 
+									sta read+2 
+									inc ba_kanalPointLo,x 
+									bne read 
+									inc ba_kanalPointHi,x 
+							 	read	lda 12345
+									rts 
+						
+
+					*=$1500	 
+							ba_animationList 
+							; einer der 6 Kanäle
+							!by <zeile1,>zeile1,2*40 ; 2*40 ist glaub ich richig, Zeile 1 läuft mit einem Delay von 2 
+							; Hier kommen dann weitere Befehle an die Liste rein. Aufpassen: Irgendein Ende-oder Restart-Befehl wird gebraucht! 
+							ba_animationList0 ; Die Liste für Kanal 0 
+							; einer der 6 Kanäle sein  
+							!by <zeile2,>zeile2,5*40  
+					 												
+							
+						
+ 							    zeile1	dec counter1 	; counter1 herunterzählen 
+									ldy counter1 	; welcher Wert steht im counter1  
+									bne z1Ende		; wenn der Wert NICHT 0 ist dann 2.Animation  
+									ldy #$02		; wenn der Wert 0 ist dann resetten auf $0a  
+									sty counter1	; reset  
+
+									ldx anzahlChars1 	; 00 Buchstaben  
+									lda $1000,x 	; gib auf   
+									sta $0400,x 	; Screen aus  
+									inc anzahlChars1 	; erhöhe X-Register (anzahlChars1)  
+							    z1Ende	rts 
+
+							    zeile2 
+									dec counter2 
+									ldy counter2 
+									bne z2Ende	 
+									ldy #$05 	
+									sty counter2 	
+
+									ldx anzahlChars2  	
+									lda $1100,x  	
+									sta $0450,x  	
+									inc anzahlChars2 	 
+							    z2Ende	rts
+				
+				
+							       irq 
+									inc FrameCounter
+									
+							    weiter	jmp $ea81 
+																		
+								
+
+			*=$1000	 
+			!ct scr 
+				!tx "1. credits & greetings: >>>hi hanno !<<<" 
+				
+			*=$1100	 
+				!ct scr 
+				!tx "2. the ultimate cracking team is back !!" 
+
+			*=$1200	 
+				!ct scr 
+				!tx "3. we are proud to present cool game !!!" 
+
+			*=$1300	 
+				!ct scr 
+				!tx "4. revenge of the ultimate cracking team" 
+
+			*=$1400	 
+				!ct scr 
+				!tx "5. textzeile nur langweiliger testtext !" 
+
+

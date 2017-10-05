@@ -1,0 +1,187 @@
+;--------------------------------------------------------------------
+;Start File 'SystemVektoren.sub'
+;--------------------------------------------------------------------
+
+;Hardware IO
+vic		= $d000
+sid 		= $d400
+colram		= $d800
+cia1		= $dc00
+cia2		= $dd00
+
+;CIA Register Offsets
+cia_pra		= 0			;Port A
+cia_prb		= 1			;Port B
+cia_ddra	= 2			;Port A Richtungsregister 0-Ein 1-Aus
+cia_ddrb	= 3			;Port B Richtungsregister 0-Ein 1-Aus
+cia_ta		= 4			;Timer A, low, hi
+cia_tb		= 6			;Timer B, low, hi
+cia_tod		= 8			;TimeOfDay 10tel, sec, min, hr
+cia_sdr		= 12			;Serial Data Register
+cia_icr		= 13			;Interrupt Control Register
+cia_cra		= 14			;Control Register a
+cia_crb		= 15			;Control Register b
+
+cia_flag	= %00010000
+
+;Einsprünge im Kernel
+resvid		= $ff81			;Video-Reset
+rescia		= $ff84			;CIA initialisieren
+resram		= $ff87			;RAM löschen/testen
+resio		= $ff8a			;IO initialisieren
+resiov		= $ff8d			;IO-Vektoren initialisieren
+setstatus	= $ff90			;status setzten
+seclisten	= $ff93			;Sekundäradresse nach listen
+sectalk		= $ff96			;Sekundäradresse nach talk
+ramend		= $ff99			;RAM-Ende setzen/holen
+ramstart	= $ff9c			;RAM-Anfang setzen/holen
+checkkey	= $ff9f			;Tastatur abfragen
+iectimeout	= $ffa2			;IEC Timeout-Flag setzen
+iecin		= $ffa5			;Eingabe vom IEC-Bus
+iecout		= $ffa8			;Ausgabe auf IEC-Bus
+iecuntalk	= $ffab			;UNTALK senden
+iecunlisten     = $ffae			;UNLISTEN senden
+ieclisten	= $ffb1			;LISTEN senden
+iectalk		= $ffb4			;TALK senden
+getstatus	= $ffb7			;status holen, im Akku
+setfls		= $ffba			;Fileparameter setzten, 
+					;a-filenr, x-gerätenr, y-sekundäradr
+setnam		= $ffbd			;Filenamenparameter setzten
+					;a-länge x-low y-hi
+open		= $ffc0			;clc ->ok sec->error (Fortg. S.181)
+close		= $ffc3
+chkin		= $ffc6			;Eingabegerät setzten, x=Kanal
+ckout		= $ffc9			;Ausgabegrät setzen, x=Kanal
+clrch		= $ffcc			;Ein/Ausgabe rücksetzen, immer eq
+input		= $ffcf			;Eingabe eines Zeichens
+print		= $ffd2			;Ausgabe eines Zeichens
+load		= $ffd5
+save		= $ffd8
+settime		= $ffdb			;Time setzen
+gettime		= $ffde			;Time holen
+checkstop	= $ffe1			;Stop-Taste abfragen eq->stop
+get		= $ffe4
+clall		= $ffe7
+inctime		= $ffea			;Time erhöhen
+getscreen	= $ffed			;Anzahl der Zeilen/Spalten holen
+setcursor	= $fff0			;Cursor setzen(clc)/holen(sec) x/y
+getio		= $fff3			;Startadresse des IO-Bausteins holen
+
+scr_input	= $f157			;Eingabe vom Bildschirm
+saveregister	= $e147			;SYS-Befehl: Register abspeichern
+resscr		= $e518			;reset Bildschirm/Tastatur
+clrscr		= $e544			;Bildschirm löschen
+crsrhome	= $e566			;Cursor home
+calccrsr	= $e56c			;Cursorposition berechnen
+initvid		= $e5a0			;Videocontroller mit Standard
+getkey		= $e5b4			;Zeichen aus Tastaturpuffer
+waitkey		= $e5ca			;wartet auf Tastatureingabe
+printscreen	= $e716			;Zeichen auf Bildschirm ausgeben
+scrollup	= $e8ea			;Scrollt Bildschirm nach oben
+clrline		= $e9ff			;löscht einen Zeile
+putchar		= $ea1c			;setzt Zeichen a-Bildschirmcode x-Farbe
+
+;Basic-Routinen
+bindbaslines	= $a533			;Basic-Zeilen neu binden
+strin		= $a560			;holt Zeile nach $200
+strout		= $ab1e 		;a-lo y-hi
+errorout	= $a437			;Basic-Warmstart Errornummer in a
+uintout		= $bdcd			;Ausgabe von uint in lo-X/hi-A
+
+;Numerische Routinen aus der Basiczeile (Anfänger 155)
+getbyt		= $b79e		
+frmnum		= $ad8a
+getadr		= $b7f7
+chkcom		= $aefd
+chrgot		= $0079
+chrget		= $0073
+getpar		= $b7eb
+frmevl		= $ad9e			;allgemeine Formelauswertung (Intern 87)
+
+;(Fortgeschrittene)
+;Fließkomma-Routinen
+;wandlungen
+ascfloat	= $bcf3			;lo-$7a hi-$7b jsr chrgot, dann round
+round		= $bc1b			;nach Wandlung runden
+float2int	= $bc9b			;hi$62-$65, wenn exp($61)<$a0
+float2asc	= $bddd			;legt ASCII-Zahl ab $100 ab a-lo y-hi
+byte2fl		= $bc3c			;a-byte
+ubyte2fl	= $b3a2			;y-byte
+word2fl		= $b395			;y-lo a-hi
+uword2fl	= $bc49			;$63-lo $62-hi x-#$90 sec
+lword2fl	= $bc4f			;siehe Fort Seite 26
+ulword2fl	= $bc4f			;sec a-#0 x-#$a0 hi$62-$65
+
+;Rechnen
+argtofac	= $bbfc
+factoarg	= $bc0c
+flplus		= $b86a			;FAC=ARG+FAC
+flminus		= $b853			;FAC=ARG-FAC
+flmul		= $ba28			;FAC=ARG*FAC
+fldiv		= $bb12			;FAC=ARG/FAC
+flpot		= $bf7b			;FAC=ARG^FAC
+
+basic_nmi_vec	= $a002			;Basic NMI-Vector JMP ($a002)
+
+;----------------------------------------------------------
+;Systemkonstanten (nach 'The Commodore 64 Marco-Assembler')
+; Zeropage und anderes
+;----------------------------------------------------------
+d6510		= $00		;6510 On-Chip Data-Direction Register
+r6510		= $01		;6510 On-Chip 8-Bit I/O Register
+
+var2		= $02		;ungenutzt
+
+index		= $22			;-$25 Zeiger für diverses
+txttab		= $2b			;Zeiger auf Basic-Prgrammstart
+vartab		= $2d			;Zeiger auf Start der Variablen
+arytab		= $2f			;Zeiger auf Start der Arrays
+strend		= $31			;Zeiger auf Ende der Arrays
+fretop		= $33			;Zeiger auf Start der Strings
+
+facexp		= $61			;Fließkommaakku 1 Exponent
+facho		= $62			; -$65 Mantisse
+facsgn		= $66			; Vorzeichen
+argexp		= $69			;Fließkommaakku 2 Exponent
+argho		= $6a			; -$9d Mantisse
+argsgn		= $6e			; Vorzeichen
+
+prg_pointer	= $7a			;Programmzeiger
+
+status		= $90			;Statuswort ST
+load_flag	= $93			;Flag für 0-load 1-verify
+direct_mode	= $9d			;Flag für Direktmodus $80, Programm $00
+tape_checksum1	= $9e			;Checksumme für Band Pass1
+tape_checksum2	= $9f			;Fehlerkorrektur für Band Pass2
+
+byte_buffer	= $b6			;Puffer für auszugebendes Byte (RS232)
+fnamelen	= $b7			;Speichert die Stringlänge
+filenumber	= $b8			;logische Filenummer
+secadr		= $b9			;Sekundäradresse
+devnumber	= $ba			;Geräteadresse
+fnameadr	= $bb			;$bb/$bc Zeiger auf Filename
+rvs_mode	= $c7			;RVS-Modus-Flag
+
+cursorcol	= $d3			;Cursorspalte
+hkommaflag	= $d4			;Flag für Hochkommamodus
+
+pointer1	= $fb			;$fb/$fc
+pointer2	= $fd			;$fd/$fe
+var1		= $ff			;ungenutzte Speicherstelle
+
+ascbuffer	= $100
+stack		= $100			;Prozessorstack
+inputbuffer	= $200			;BASIC Eingabepuffer
+qualkey		= $028d			;Bit 012 für Shift, Commodore, CTRL
+sareg		= $30c			;Akku für SYS-Befehl
+sxreg		= $30d			;x-Register
+syreg		= $30e			;y-Register
+spreg		= $30f			;Status-Register
+
+cinv		= $314			;IRQ-Vektor
+cbinv		= $316			;Break-Vektor
+nminv		= $318			;NMI-Vektor
+istop		= $328			;Stop-Vektor
+;--------------------------------------------------------------------
+;Ende File 'SystemVektoren.sub'
+;--------------------------------------------------------------------

@@ -1,0 +1,100 @@
+ca65 V2.11.0 - (C) Copyright 1998-2005 Ullrich von Bassewitz
+Main file   : bigint.s
+Current file: bigint.s
+
+000000r 1               ;longint.s
+000000r 1               ;for as65 assembler for cc65 package
+000000r 1               	.P02
+000000r 1               
+000000r 1               	accu=$fe
+000000r 1               	arg=$fc
+000000r 1               
+000000r 1               	.segment "STARTUP"
+000000r 1               
+000000r 1               .macro  basicstart nr,kommentar
+000000r 1               	.org $0801
+000000r 1               ;Basic Start
+000000r 1               	.word *
+000000r 1               	.org *-2
+000000r 1               	.word @lline
+000000r 1               	.ifnblank nr
+000000r 1               	   .word nr	; Zeilennummer
+000000r 1               	.else
+000000r 1               	   .word 0
+000000r 1               	.endif
+000000r 1               	.byte $9e	; SYS
+000000r 1               	.ifnblank kommentar
+000000r 1               	   .asciiz .sprintf ("(%d)%s", *+9+.strlen(kommentar), kommentar)
+000000r 1               	.else
+000000r 1               	   .asciiz .sprintf ("%d", *+7)
+000000r 1               	.endif
+000000r 1               	; , $32, $30, $36, $31, $00,
+000000r 1               @lline:	.word 0
+000000r 1               ;Basic End
+000000r 1               .endmacro
+000000r 1               
+000000r 1  01 08 11 08  	basicstart 2007,"test"
+000004r 1  D7 07 9E 28  
+000008r 1  32 30 36 37  
+000813  1               
+000813  1  A9 4F        _main: 	lda #<fl1
+000815  1  85 FE        	sta accu
+000817  1  A9 08        	lda #>fl1
+000819  1  85 FF        	sta accu+1
+00081B  1  A9 55        	lda #<fl2
+00081D  1  85 FC        	sta arg
+00081F  1  A9 08        	lda #>fl2
+000821  1  85 FD        	sta arg+1
+000823  1  20 27 08     	JSR longadd
+000826  1  60           	RTS
+000827  1               
+000827  1               .proc longadd
+000827  1  78           	sei
+000828  1  F8           	sed
+000829  1  18           	clc
+00082A  1  A0 00        	ldy #0
+00082C  1  B1 FE        	lda (accu),y
+00082E  1  A8           	tay
+00082F  1  B1 FE        L1:	lda (accu),y
+000831  1  71 FC        	adc (arg),y
+000833  1  91 FE        	sta (accu),y
+000835  1  88           	dey
+000836  1  D0 F7        	bne L1
+000838  1  D8           	cld
+000839  1  58           	cli
+00083A  1  60           	rts
+00083B  1               .endproc
+00083B  1               
+00083B  1               .proc longsub
+00083B  1  78           	sei
+00083C  1  F8           	sed
+00083D  1  38           	sec
+00083E  1  A0 00        	ldy #0
+000840  1  B1 FE        	lda (accu),y
+000842  1  A8           	tay
+000843  1  B1 FE        L1:	lda (accu),y
+000845  1  F1 FC        	sbc (arg),y
+000847  1  91 FE        	sta (accu),y
+000849  1  88           	dey
+00084A  1  D0 F7        	bne L1
+00084C  1  D8           	cld
+00084D  1  58           	cli
+00084E  1  60           	rts
+00084F  1               .endproc
+00084F  1               
+00084F  1               
+00084F  1               ;.proc test
+00084F  1               ;	LDY #0
+00084F  1               ;L1:	TYA
+00084F  1               ;	STA $0400,Y
+00084F  1               ;	INY
+00084F  1               ;	BNE L1
+00084F  1               ;	RTS
+00084F  1               ;.endproc
+00084F  1               
+00084F  1               	.data
+00084F  1  05 00 12 34  fl1:	.byte 5, $00, $12, $34, $56, $78
+000853  1  56 78        
+000855  1  05 00 11 11  fl2:    .byte 5, $00, $11, $11, $11, $11
+000859  1  11 11        
+00085A  1               
