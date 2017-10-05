@@ -1,0 +1,47 @@
+;Standard-Macros
+;(C) Hanno Behrens 2005 (pebbles@schattenlauf.de)
+;GPL-Lizenz
+
+  !source <C64/BASIC2.a>
+
+;generiert einen Basic-Header mit einer gewünschten Zeilennummer
+
+!macro basic_header .zeile {
+	*=$0801
+;Header generieren 
+	!word endline 		;Zeiger auf nächste Zeile 
+	!word .zeile 		;Zeilennummer 
+	+b_SYS 
+	!tx "2061",0 endline 
+	!word 0 
+;Ende Header
+}
+
+!macro savereg {
+	pha
+	txa
+	pha
+	tya
+	pha
+	tsx
+	lda stack+3,x
+}
+
+!macro restorereg {
+	pla
+	tay
+	pla
+	tax
+	pla
+}
+
+!macro savefreg {
+	sta sys_a
+	sty sys_y
+	stx sys_x
+}
+!macro	restorefreg {
+	lda sys_a
+	ldy sys_y
+	ldx sys_x
+}

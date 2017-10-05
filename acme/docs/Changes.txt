@@ -1,0 +1,163 @@
+
+
+                                 ACME
+
+         ...the ACME Crossassembler for Multiple Environments
+
+                          --- change log ---
+
+
+This text only contains descriptions of changes independent of the
+platform used. There should be another help file in this archive
+outlining the platform specific changes.
+
+
+
+
+***   Changes from release 0.84 alpha to release 0.85 alpha:
+
+Fixed bug: Handling of parentheses in new expression parser was badly
+    screwed up. Thanks go to Nathan Smith for reporting that bug.
+Verbosity messages for segments and output file now contain size info.
+
+
+
+
+***   Changes from release 0.08 beta to release 0.84 alpha:
+
+Some changes in documentation (mainly corrected typos)
+Usage count for labels (Unused ones are marked in label dump file)
+New PO: "!8" (for 8-bit values, as "!byte" / "!by" / "!08")
+Finally removed the dreaded only-two-input-files restriction
+Improved PO: "!to" has parameter for choosing output file format
+Fixed bug: Blanks after "!for"'s "}" character stopped assembly
+Rewritten expression parser and label tree handler (should be faster)
+Generally tidied up the source.
+Skipped some version numbers to get a "less frightening" one. :)
+
+
+
+
+***   Changes from release 0.07 beta to release 0.08 beta:
+
+Fixed really serious bug: The 65816's indirect DP addressing caused
+    wrong opcodes to be generated. Thanks to Doc Bacardi/The Dreams
+    for reporting it.
+
+
+
+
+***   Changes from release 0.05 beta to release 0.07 beta:
+
+Fixed really serious bug: Indirect JMP / JSR were assembled without
+    target addresses. Thanks to YTM/Alliance for reporting that one.
+Fixed bug in value parser's handling of parentheses: Expressions like
+    "a*(b-c)+d" gave "a*((b-c)+d)", obviously not the same.
+Fixed bug: "!set LABEL = VALUE" now *really* works correctly.
+Fixed bug: ACME gave "too late for postfix" error when reading a
+    predefined label of known size. Only occurred when using macros.
+Fixed bug: Error messages given from within macro definitions used
+    truncated file names.
+Fixed bug: Calling of local macros didn't work at all.
+Fixed bug: "}" chars directly after macro calls were not found.
+Fixed bug: Spaces after ":" and "{" gave syntax errors.
+Fixed bug: Line counting inside loops was screwed up.
+Fixed bug: Changed argument order of MVP and MVN (now it's "opcode,
+    source, target")
+New PO: "!08" (for 8-bit values, as "!byte" / "!by")
+New PO: "!16" (for 16-bit values, as "!word" / "!wo")
+New PO: "!24" (for 24-bit values)
+New PO: "!32" (for *signed* 32-bit values)
+New PO: "!pseudopc" (starts offset assembly)
+New PO: "!realpc" (ends offset assembly)
+New PO: "!for LABEL, TIMES { LINES }" for easier loops.
+New PO: "!initmem BYTE" to define empty memory.
+New PO: "!endoffile" (short "!eof") replaces "!end".
+New PO: "!ifdef" (only use this if you *really* know what you are
+    doing. Otherwise, just don't use it)
+New PO: "!convtab CONVERSION" (short "!ct") selects the default
+    character conversion, making "!cbm" obsolete.
+Improved PO: "!binary" now has "skip" parameter.
+Change: "!cbm" outputs a warning when used - use "!ct pet" instead.
+Change: "!end" no longer works - use "!eof" instead.
+Change: "*=VALUE" is now segment change instead of offset assembly.
+Change: Argument order of MVN/MVP is now as is standard.
+The typecast system has been rewritten - now it works as intended.
+BIT without any parameters no longer works - use a macro instead.
+Leading zeros are stored in label structures and acted upon.
+The documentation is in several files now.
+Negative numbers are now handled much more sensibly.
+'ACME' environment variable only needed when *really* needed.
+
+
+
+
+***   Changes from release 0.04 beta to release 0.05 beta:
+
+Fixed bug: No more multiple error messages.
+Fixed bug: Zone names now work correctly (First char wasn't stored).
+Fixed bug: "!set label = label" now works correctly (I hope).
+Fixed bug: "stz ...,y" gave "number too big" instead of "illegal
+    combination of command and addressing mode"
+New PO: "!subzone" (short "!sz") for nested zones.
+Added support for library tree when using "!source" or "!binary".
+Single-character strings can now be given in single quotes as well.
+Real icons.
+Startup errors now exit correctly with EXIT_FAILURE code.
+Example program now includes "Expected_Output" file.
+Further tidied up the sources.
+Tidied up the general help file:
+ -Changed "Freeware" to "free software"
+ -Corrected the information given on "!align".
+ -Added examples for most of the pseudo opcodes.
+
+
+
+
+***   Changes from release 0.03 beta to release 0.04 beta:
+
+Corrected some small bugs.
+New PO: "!zone" (short "!zn") replaces "!module" (short "!mod")
+Tidied up the sources a lot.
+Changed bad style C code reported by lint.
+Added GNU GPL hint in every source file.
+Added startup message in verbose mode.
+Added "Error: " to startup error messages.
+Added Amiga, Linux and OS/2 versions
+
+
+
+
+***   Changes from release 0.02 alpha to release 0.03 beta:
+
+Generally tidied up the source.
+Moved RISC OS-specific CLI options to platform file.
+Added pathname conversion from UNIX style to current platform style.
+Added context variables (enabling "!source"s and macros).
+Translated all documentation to english.
+Changed string pseudo opcodes to allow numeric values.
+Added verbose mode (CLI option "v").
+Added output buffer, removing the need for additional output pass (and
+    now the "!to" pseudo opcode can be placed anywhere).
+More than one "label = pc" definition per statement now illegal.
+Instead added possibility to have several statements on a single line
+    by using ":" as a separator character.
+Added new keywords: "!set", "!if", "else", "!do", "until", "while" and
+    "!macro"
+Added support for "!source".
+Added basic support for blocks.
+Added support for "!if {...} else {...}".
+Added support for zone titles.
+Added support for loops (endless loops are only detected if producing
+    code).
+Added support for macros (even nested definitions are possible now).
+Added DOS version.
+
+
+
+
+***   Changes from release 0.01 alpha to release 0.02 alpha
+
+Er, I don't know anymore. It was a bad ugly hack and it only ran on
+    RISC OS. :-)
+

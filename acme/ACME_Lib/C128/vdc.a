@@ -1,0 +1,154 @@
+;ACME 0.07
+
+!ifdef Lib_C128_vdc_a !eof
+Lib_C128_vdc_a = 1
+
+; access macros
+
+!macro vdc_lda {
+.l	bit vdc_state
+	bpl .l
+	lda vdc_data
+}
+
+!macro vdc_sta {
+.l	bit vdc_state
+	bpl .l
+	sta vdc_data
+}
+
+!macro vdc_ldx {
+.l	bit vdc_state
+	bpl .l
+	ldx vdc_data
+}
+
+!macro vdc_stx {
+.l	bit vdc_state
+	bpl .l
+	stx vdc_data
+}
+
+!macro vdc_ldy {
+.l	bit vdc_state
+	bpl .l
+	ldy vdc_data
+}
+
+!macro vdc_sty {
+.l	bit vdc_state
+	bpl .l
+	sty vdc_data
+}
+
+; color codes
+
+; These are the colors officially available on the C128 - the same names as if using a C64's VIC, but different codes of course.
+
+; color name           RGBI code
+vdcclr_black	= $0; %....
+vdcclr_white	= $f; %####
+vdcclr_red	= $8; %#...
+vdcclr_cyan	= $7; %.###
+vdcclr_purple	= $b; %#.##
+vdcclr_green	= $4; %.#..
+vdcclr_blue	= $2; %..#.
+vdcclr_yellow	= $d; %##.#
+vdcclr_orange	= $a; %#.#. (this is in fact a dark shade of purple)
+vdcclr_brown	= $c; %##..
+vdcclr_lred	= $9; %#..#
+vdcclr_gray1	= $6; %.##. (this is in fact a dark shade of cyan)
+vdcclr_gray2	= $1; %...# (this is almost, but not quite, entirely black)
+vdcclr_lgreen	= $5; %.#.#
+vdcclr_lblue	= $3; %..##
+vdcclr_gray3	= $e; %###.
+
+; The following alternative names are much easier to remember when you're used to writing programs for the VDC: There are eight main colors, and each one is available in a light and a dark shade - even "black" and "white" !
+
+; primary colors   RGBI code
+vdcclr_dred	= %#...
+vdcclr_dgreen	= %.#..
+vdcclr_dblue	= %..#.
+vdcclr_lred	= %#..#
+vdcclr_lgreen	= %.#.#
+vdcclr_lblue	= %..##
+
+; secondary colors RGBI code
+vdcclr_lcyan	= %.###
+vdcclr_lmagenta	= %#.##
+vdcclr_lyellow	= %##.#
+vdcclr_dcyan	= %.##.
+vdcclr_dmagenta	= %#.#.
+vdcclr_dyellow	= %##..
+
+; black & white    RGBI code
+vdcclr_dblack	= %....
+vdcclr_lblack	= %...#
+vdcclr_lwhite	= %####
+vdcclr_dwhite	= %###.
+
+; if you don't like the concept of shaded black/white, then use these:
+
+; gray level       RGBI code
+vdcclr_black	= %....; "dark black"  => "black"
+vdcclr_dgray	= %...#; "light black" => "dark grey"
+vdcclr_lgray	= %###.; "dark white"  => "light grey"
+vdcclr_white	= %####; "light white" => "white"
+
+; attribute flags (2rufRGBI)
+vdcattr_2nd	= %#.......; second character set
+vdcattr_revs	= %.#......; reverse mode
+vdcattr_ul	= %..#.....; underline
+vdcattr_flash	= %...#....; flash
+vdcattr_r	= %....#...; red
+vdcattr_g	= %.....#..; green
+vdcattr_b	= %......#.; blue
+vdcattr_i	= %.......#; intensity
+
+;direct registers
+vdc_state	= $d600; 1b "ready", 1b "lightpen", 1b "rescan", 5b "version"
+vdc_reg		= $d600
+vdc_data	= $d601
+
+;indirect registers
+vdcr_htotal	= $00; card columns (total), minus one
+vdcr_columns	= $01; card columns actually displayed
+vdcr_hdisp	= $01
+vdcr_hsync_pos	= $02; card to send horizontal sync in
+vdcr_syncwidth	= $03; 4b vertical, 4b horizontal
+vdcr_vtotal	= $04; card lines (total), minus one
+vdcr_vadjust	= $05; additionally scan lines
+vdcr_lines	= $06; card lines actually displayed
+vdcr_vdisp	= $06
+vdcr_vsync_pos	= $07; card line to send vertical sync in
+vdcr_interlace	= $08; interlace mode
+vdcr_cardheight	= $09; 5b total, minus one
+vdcr_crsr_start	= $0a; 2b mode, 5b scanline
+vdcr_crsr_end	= $0b;          5b scanline
+vdcr_display_hi	= $0c; RAM address of display buffer
+vdcr_display_lo	= $0d
+vdcr_crsr_hi	= $0e; RAM address of cursor
+vdcr_crsr_lo	= $0f
+vdcr_lp_y	= $10; y position of light pen
+vdcr_lp_x	= $11; x position
+vdcr_ram_hi	= $12; RAM address of register $1f
+vdcr_ram_lo	= $13
+vdcr_attr_hi	= $14; RAM address of attribute buffer
+vdcr_attr_lo	= $15
+vdcr_cardwidth_charwidth	= $16; 4b total, 4b displayed
+vdcr_charheight	= $17; 5b displayed, minus one
+vdcr_control_v	= $18; vertical scroll and much other stuff
+vdcr_control_h	= $19; horizontal scroll and much other stuff
+vdcr_color	= $1a; 4b foreground, 4b background
+vdcr_row_inc	= $1b; Address increment per row
+vdcr_charset	= $1c; 3b charset pointer, 1b RAM type, 4b unused
+vdcr_underline	= $1d; 5b scanline
+vdcr_cycles	= $1e; number of write- or copy-cycles. 0 means 256.
+vdcr_access	= $1f; RAM content of address r$12/13
+vdcr_source_hi	= $20; RAM address of cycle start
+vdcr_source_lo	= $21
+vdcr_enable_start	= $22; column to enable display in
+vdcr_enable_end		= $23; column to disable display in
+vdcr_dram_refresh	= $24; RAM refresh rate
+vdcr_r25	= $25; only in type-2 VDCs, does not exist officially
+

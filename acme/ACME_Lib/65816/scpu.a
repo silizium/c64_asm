@@ -1,0 +1,41 @@
+;ACME 0.07
+
+!ifdef Lib_65816_scpu_a !eof
+Lib_65816_scpu_a = 1
+
+; Labels for CMD's SuperCPU
+
+; Partially taken from "All_About_Your_64-Online", version 0.05
+
+scpu_om_80c0	= $d074; optimization mode: mirror $8000 to $bfff (GEOS)
+scpu_om_4080	= $d075; optimization mode: mirror $4000 to $7fff (VIC bank 1)
+scpu_om_0408	= $d076; optimization mode: mirror $0400 to $07ff (BASIC)
+scpu_om_none	= $d077; optimization mode: mirror everything (no optimization)
+
+;		= $d079; duplicate of $d07b
+scpu_1mhz	= $d07a; speed select - Normal (1 MHz)
+scpu_20mhz	= $d07b; speed select - Turbo (20 MHz)
+
+;		= $d07d; duplicate of $d07f
+scpu_reg_show	= $d07e; hardware register Enable
+scpu_reg_hide	= $d07f; hardware register Disable
+
+scpu_modedetect	= $d0b0; SuperCPU Mode Detect Register
+
+scpu_regsysflag	= $d0b2; Hardware Register-/System Flag
+scpu_om_v2	= $d0b3; Enhanced Optimization Register (V2 only!)
+scpu_om_flags	= $d0b4; Optimization Mode Flags
+scpu_jd_flag	= $d0b5; JiffyDOS-/Speed Switch Flag
+scpu_reset_flag	= $d0b6; Processor Emulation-/Reset Flag
+
+scpu_clock	= $d0b8; Software 1 MHz-/Master 1MHz Flag
+
+scpu_flags	= $d0bc; DOS Extension-/RAMLink Hardware Reg. Flag
+
+scpu_systemram	= $d200; System-RAM (up to $d2ff):
+scpu_firstpage	=   $d27c; First Available Page of SuperRAM
+scpu_firstbank	=   $d27d; Bank of First Available Page of SuperRAM
+scpu_lastpage	=   $d27e; Last Available Page of SuperRAM + 1
+scpu_lastbank	=   $d27f; Bank of Last Available Page of SuperRAM + 1
+
+scpu_userram	= $d300; User-RAM (up to $d3ff)

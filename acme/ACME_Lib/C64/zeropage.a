@@ -1,0 +1,115 @@
+;ACME 0.07
+
+!ifdef Lib_C64_zeropage_a !eof
+Lib_C64_zeropage_a = 1
+
+; Die Labels stammen aus dem Handbuch vom Commodore Assembler
+; Seite 40 folgende, in Kleinschrift mit einem Prefix "z_"
+
+z_d6510		= $00	;6510 Data Direction
+z_r6510		= $01	;6510 IO
+z_donotuse	= $02
+
+z_adray1	= $03	;Jump Vector Convert Floating Point - Integer
+z_adray2	= $05	;Jump Vector Convert Integer - Floating Point
+
+z_charac	= $07	;Search Character
+z_endchar	= $08	;Flag Scan for Quote at End of String
+z_trmpos	= $09	;Screen Column From Last TAB
+z_verck		= $0a	;Flag 0=Load 1=Verify
+z_count		= $0b	;Input Buffer Pointer/Number of Subscripts
+z_dimflg	= $0c	;Flag Default Array Dimension 
+z_valtyp	= $0d 	;00 Numerisch $ff String
+z_intflg	= $0e	;$80 int, $00 real
+z_garbfl	= $0f	;Flag Data scan/List quote/Garbage Collect
+z_subflg	= $10	;Flag Subscript Ref/User Function call
+z_inpflg	= $11	;input $00 get $40 READ $98
+z_tansgn	= $12	;Flag TAN sign/Comparison Result
+z_iodevice	= $13	;aktives IO-Gerät
+z_linnum	= $14	;integer Adresse, zb Zeilennummer
+z_temppt	= $16	;Zeiger auf Stringstack
+z_lastpt	= $17	;Zeiger auf zulettz verwendeten String
+z_tempst	= $19	;Stringstack
+z_index		= $22	;Pointer für diverse Zwecke
+z_resho		= $26	;26-2a Register für Funktionsauswertung und Arithmetik
+
+z_txttab	= $2b	;Pointer Start of BASIC Text
+z_vartab	= $2d	;Pointer Start of BASIC Variables
+z_arytab	= $2f	;Pointer Start of BASIC Arrays
+z_strend	= $31	;Pointer End of BASIC Arrays
+z_fretop	= $33	;Pointer Bottom of String Storage
+z_frespc	= $35	;Utility String Pointer
+z_memsiz	= $37	;Pointer Highest Address Used by BASIC
+z_curlin	= $39	;Current BASIC Line Number
+z_oldlin	= $3b	;Previous BASIC Line Number
+z_oldtxt	= $3d	;Pointer BASIC Statement for CONT
+z_datlin	= $3f	;Current DATA Line Number
+z_datptr	= $41	;Pointer Current DATA Item Address
+z_inpptr	= $43	;Vector INPUT Routine
+z_varnam	= $45	;Current BASIC Variable Name
+z_varpnt	= $47	;Pointer Current BASIC Variable Data
+z_forpnt	= $49	;Pointer Index Variable for FOR/NEXT
+z_tmpdta	= $4b	;-$60 Temp Pointer/Data Area
+z_facexp	= $61	;Floating Point Accu #1: Exponent
+z_facho		= $62	;Floating Point Accu #1: Mantissa
+z_facsgn	= $66	;Floating Point Accu #1: Sign
+z_sgnflg	= $67	;Pointer Series Evaluationi Constant
+z_bits		= $68	;Floating Point Accu #1: Overflow Digit
+z_argexp	= $69	;Floating Point Accu #2: Exponent
+z_argho		= $6a	;Floating Point Accu #2: Mantissa
+z_argsgn	= $6e	;Floating Point Accu #2: Sign
+z_arisgn	= $6f	;Sign Comparison Result: Accu #1 vs #2
+z_facov		= $70	;Floating Accu #1 Low-Order (Rounding)
+
+rodbs		= $029d	;RS232 Start of Output Buffer
+rodbe		= $029e	;RS232 Index of End of OUtput Buffer
+irqtmp	= $029f	;Holds IRQ Vector During Tape IO
+enabl		= $02a1	;RS232 Current Enables Interrupts
+
+stack		= $0100
+
+sprite11	= $02c0
+
+ierror		= $0300
+imain		= $0302
+icrnch		= $0304
+iqplop		= $0306
+igone		= $0308
+ieval		= $030a
+
+sareg		= $030c
+sxreg		= $030d
+syreg		= $030e 
+spreg		= $030f
+
+usrpok		= $0310
+usradd		= $0314
+cinv		= $0314
+cbinv		= $0316
+nminv		= $0318
+iopen		= $031a
+iclose		= $031c
+ichkin		= $031e
+ichkout		= $0320
+iclrch		= $0322
+ibasin		= $0324
+ibsout		= $0326
+istop		= $0328
+igetin		= $032a
+iclall		= $032c
+usrcmd		= $032e
+iload		= $0330
+isave		= $0332
+tbuffer		= $033c
+sprite13	= $0340
+sprite14	= $0380
+sprite15	= $03c0
+
+vicscn		= $0400	;1024 Byte Screen Memory Area
+
+basram		= $0800
+hiram		= $c000
+
+k_crtrom	= $8000
+k_basic		= $a000
+k_kernal	= $e000

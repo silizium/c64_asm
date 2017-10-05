@@ -1,0 +1,3 @@
+!eof
+
+This directory contains files specific for the Acorn 8-Bit range of computers. There may be subdirectories that address more specialized needs.

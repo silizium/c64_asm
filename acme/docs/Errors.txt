@@ -1,0 +1,267 @@
+
+
+                                 ACME
+
+         ...the ACME Crossassembler for Multiple Environments
+
+                        --- error messages ---
+
+
+Here's a sorted list of all error messages ACME can give, possible
+reasons and what you can do to sort it out.
+
+
+
+
+***   Warnings
+
+"'!cbm' is deprecated; use '!ct pet' instead."
+    This is given when "!cbm" is encountered. It still works though.
+
+"Bug in ACME, code follows"
+    A situation has been encountered implying there is a bug in ACME.
+    See the last paragraph in this file.
+
+"Offset assembly still active at end of segment. Switched it off."
+    There's a "*=" command inside an offset assembly block or you
+    forgot to use "!realpc" at all.
+
+"Segment reached another one, overwriting it."
+    The program counter has just reached the start of another segment.
+    Because some people might want to assemble "onto" a binary file
+    that was loaded before, this is given as a warning instead of as
+    an error.
+
+"Segment starts inside another one, overwriting it."
+    The given value in a "*=" command is located inside another
+    segment. Because some people might want to assemble "onto" a
+    binary file that was loaded before, this is given as a warning
+    instead of as an error.
+
+"Using oversized addressing mode."
+    ACME just assembled a command using an addressing mode that was
+    larger than needed. This only happens if ACME could not work out
+    the argument's value in the first pass, therefore assuming a 16-
+    bit addressing mode. If, in a later pass, ACME finds out that the
+    argument is small enough to fit in 8 bits, then this warning is
+    shown. If you define all your zeropage labels *before* they are
+    first used, this shouldn't happen. If you know that a specific
+    argument fits in 8 bits, you can force ACME to use 8 bits
+    addressing by postfixing the command with "+1". Example:
+
+    lda+1 label
+
+    ACME will then use an 8-bit addressing mode, regardless of whether
+    the label is known or not. If the label value happens to be too
+    large to fit in 8 bits, ACME will show an error of course (To
+    always truncate a value to 8 bits, use the "<" operator).
+    More about the postfixing method can be found in "AddrModes.txt".
+
+
+
+
+***   Errors during assembly
+
+"'ACME' environment variable not found."
+    This will be shown if the source code references any files from
+    the library, but the library location variable wasn't set. This
+    can only be given on systems using the said variable.
+
+"Bogus expression, code A."
+"Bogus expression, code B."
+    The expression parser has become seriously confused. If you ever
+    get one of these messages, please send me an e-mail along with a
+    piece of source code that triggers it.
+
+"Cannot open input file."
+    ACME had problems opening an input file ("!src" or "!bin"). Maybe
+    you mistyped its name.
+
+"Cannot open label dump file."
+    ACME had problems opening the label dump file ("!sl"). Make sure
+    the name doesn't contain wildcard characters and you have write
+    access to the directory.
+
+"Cannot open output file."
+    ACME had problems opening the output file ("!to"). Make sure the
+    name doesn't contain wildcard characters and you have write access
+    to the directory.
+
+"Chosen CPU does not support this command and/or addressing mode."
+    You have used a command or addressing mode without having chosen
+    the matching CPU using "!cpu".
+
+"Division by zero."
+    Guess what - you attempted to divide by zero.
+
+"End of file expected."
+    ACME encountered a "}" character when no blocks were open.
+
+"Exponent is negative."
+    Using negative exponents would only give sensible results when
+    using floating point maths.
+
+"Illegal combination of command and addressing mode."
+    The given command cannot be used with the given addressing mode.
+
+"Illegal combination of command and postfix."
+    The given command cannot be used with the addressing mode
+    indicated by the given postfix.
+
+"Illegal postfix."
+    You used a different postfix than "+1", "+2" or "+3".
+
+"Label already defined."
+    You defined a label that already had a different value. To change
+    a label's value, use "!set".
+
+"Label dump file already chosen."
+    The "!sl" command was given twice. Only use it once.
+
+"Macro already defined."
+    Macros can only be defined once.
+
+"Macro not defined."
+    You tried to call a macro that wasn't defined yet. Always define
+    macros before using them.
+
+"Memory already initialised."
+    The "!initmem" command was given twice. Only use it once.
+
+"Missing '{'."
+    ACME didn't find the expected "{" character. Remember that "{"
+    characters must be given on the same line as the command they
+    belong to.
+
+"Missing '}'."
+    The file ended though there were still open blocks.
+
+"Negative value - cannot choose addressing mode."
+    Because the argument is a negative value, ACME does not know what
+    addressing mode (8 bits, 16 bits, on a 65816 even 24 bits) to use.
+    You can overcome this problem using the postfix method. Or correct
+    your program to use positive addresses instead.
+
+"No string given."
+    ACME expects a string but doesn't find it.
+
+"Number out of range."
+    A value is too high or too low.
+
+"Out of memory."
+    When ACME runs out of memory, it stops assembly, giving this
+    error. Free some memory and try again.
+
+"Output file already chosen."
+    The "!to" command was given twice. Only use it once.
+
+"Produced too much code."
+    The program counter reached address $10000, leaving the output
+    buffer. At the moment, ACME can only produce a maximum of 64 KB.
+
+"Program counter is unset."
+    You didn't set the program counter, so ACME didn't know where to
+    start.
+
+"Quotes still open at end of line."
+    You forgot the closing quotes.
+
+"Recursion too deep."
+    Something was too deeply nested. Either a mathematical formula
+    (break it up into smaller pieces) or macro usage or file includes
+    or looping assembly.
+
+"Sorry, feature not yet implemented."
+    Assembling code for the Z80 processor, for example... :)
+
+"String too long."
+    Use a shorter string...
+
+"Syntax error."
+    Guess what - there's a syntax error.
+
+"Target out of range."
+    A relative addressing (branch commands or PER) only has a limited
+    range. You exceeded it.
+
+"Too late for postfix."
+    You can only postfix labels at the start, before they are used for
+    the first time.
+
+"Too many '('."
+    A formula ends before all parentheses were closed.
+
+"Too many ')'."
+    There are more closing than opening parentheses in a formula.
+
+"Too many macro parameters."
+    At the moment, the number of macro parameters is limited to eight.
+    This is set when ACME is compiled.
+
+"Unknown operator."
+    ACME didn't recognize the operator you tried to use. Remember that
+    operators have to be given in upper case.
+
+"Unknown output format."
+    ACME didn't recognize the file type you tried to use with "!to".
+    Maybe you have mistyped the keyword.
+
+"Unknown processor."
+    You used the "!cpu" command with a keyword it doesn't recognize.
+
+"Unknown pseudo opcode."
+    You have mistyped a "!" command.
+
+"Value not yet defined."
+    A value could not be worked out. Maybe you mistyped a label name.
+
+"Wrong number of macro parameters."
+    When calling a macro, you must use the same number of parameters
+    as in the macro's definition.
+
+
+
+
+***   Errors on startup or closedown
+
+"Cannot open toplevel file."
+    ACME had problems opening the given source code file. Maybe you
+    mistyped its name.
+
+"No top level source given."
+    You tried to start ACME without giving any file name.
+
+"Unknown CLI switch: '%c'."
+    You tried to use an unsupported CLI switch.
+
+
+
+
+***   Bugs in ACME
+
+    The warning "Bug in ACME, code follows" is always followed by a
+    serious error message, stopping assembly. The second message
+    actually gives a hint about the bug's location in the source code.
+    If you ever get this combination of warning and serious error,
+    please send me an e-mail and tell me about it. If possible,
+    include a piece of source code that triggers it.
+
+    Please don't get this wrong - there are no known bugs. I just left
+    some debugging code in place in case there is a bug I failed to
+    notice during testing. In practice, this warning is not expected
+    to be given at all. That's the reason why I want to be notified if
+    it *does* decide to show up.
+
+    The hint messages are of no real interest to the end user, but here
+    they are for completeness' sake.
+
+"file not open"
+    A file wasn't open though it should have been.
+
+"strange parenthesis"
+    The expression parser has a problem with parentheses.
+
+"illegal group index"
+"invalid operator handle"
+    The expression parser has problems with its job queue.
+

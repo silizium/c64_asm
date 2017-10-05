@@ -1,0 +1,56 @@
+;ACME 0.07
+
+!ifdef Lib_C64_petscii_a !eof
+Lib_C64_petscii_a = 1
+
+; color codes
+petscii_black	= 144
+petscii_white	=   5
+petscii_red	=  28
+petscii_cyan	= 159
+petscii_purple	= 156
+petscii_green	=  30
+petscii_blue	=  31
+petscii_yellow	= 158
+petscii_orange	= 129
+petscii_brown	= 149
+petscii_lred	= 150
+petscii_gray1	= 151
+petscii_gray2	= 152
+petscii_lgreen	= 153
+petscii_lblue	= 154
+petscii_gray3	= 155
+
+; switching character set
+petscii_lock		=   8; forbid CBM-shift
+petscii_unlock		=   9; allow CBM-shift
+petscii_lowercase	=  14; switch to lowercase/uppercase character set
+petscii_uppercase	= 142; switch to uppercase/graphics character set
+
+; cursor movements
+petscii_up	= 145
+petscii_down	=  17
+petscii_left	= 157
+petscii_right	=  29
+
+; other control codes
+petscii_stop	=   3
+petscii_cr	=  13; carriage return
+petscii_cs	= 141; carriage return, shifted
+petscii_revson	=  18
+petscii_revsoff	= 146
+petscii_home	=  19
+petscii_clear	= 147
+petscii_del	=  20:petscii_backspace	=  20
+petscii_inst	= 148:petscii_insert	= 148
+petscii_shiftspace	= 160
+
+; functions keys
+petscii_f1	= 133
+petscii_f2	= 137
+petscii_f3	= 134
+petscii_f4	= 138
+petscii_f5	= 135
+petscii_f6	= 139
+petscii_f7	= 136
+petscii_f8	= 140

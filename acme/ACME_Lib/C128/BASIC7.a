@@ -1,0 +1,126 @@
+;ACME 0.07
+
+!ifdef Lib_C128_BASIC7_a !eof
+Lib_C128_BASIC7_a = 1
+
+; Macros for inserting BASIC commands. Note that "#" and "$" characters in
+; BASIC keywords have been converted to "_" in the macro names.
+
+; *All* functions already include the left parenthese.
+
+; This file only contains those tokens that were added in BASIC 7.0. To obtain
+; a *full* list, you have to also include the BASIC 2.0 tokens using
+;	!source <C64/BASIC2.a>
+
+
+; normal (8-bit) tokens:
+
+!macro b_RGR	{!by $cc:!pet '('}
+!macro b_RCLR	{!by $cd:!pet '('}
+; $ce prefixes extended tokens, see below
+!macro b_JOY	{!by $cf:!pet '('}
+!macro b_RDOT	{!by $d0:!pet '('}
+!macro b_DEC	{!by $d1:!pet '('}
+!macro b_HEX_	{!by $d2:!pet '('}
+!macro b_ERR_	{!by $d3:!pet '('}
+!macro b_INSTR	{!by $d4:!pet '('}
+!macro b_ELSE	{!by $d5}
+!macro b_RESUME	{!by $d6}
+!macro b_TRAP	{!by $d7}
+!macro b_TRON	{!by $d8}
+!macro b_TROFF	{!by $d9}
+!macro b_SOUND	{!by $da}
+!macro b_VOL	{!by $db}
+!macro b_AUTO	{!by $dc}
+!macro b_PUDEF	{!by $dd}
+!macro b_GRAPHIC	{!by $de}
+!macro b_PAINT	{!by $df}
+!macro b_CHAR	{!by $e0}
+!macro b_BOX	{!by $e1}
+!macro b_CIRCLE	{!by $e2}
+!macro b_GSHAPE	{!by $e3}
+!macro b_SSHAPE	{!by $e4}
+!macro b_DRAW	{!by $e5}
+!macro b_LOCATE	{!by $e6}
+!macro b_COLOR	{!by $e7}
+!macro b_SCNCLR	{!by $e8}
+!macro b_SCALE	{!by $e9}
+!macro b_HELP	{!by $ea}
+!macro b_DO	{!by $eb}
+!macro b_LOOP	{!by $ec}
+!macro b_EXIT	{!by $ed}
+!macro b_DIRECTORY	{!by $ee}
+!macro b_DSAVE	{!by $ef}
+!macro b_DLOAD	{!by $f0}
+!macro b_HEADER	{!by $f1}
+!macro b_SCRATCH	{!by $f2}
+!macro b_COLLECT	{!by $f3}
+!macro b_COPY	{!by $f4}
+!macro b_RENAME	{!by $f5}
+!macro b_BACKUP	{!by $f6}
+!macro b_DELETE	{!by $f7}
+!macro b_RENUMBER	{!by $f8}
+!macro b_KEY	{!by $f9}
+!macro b_MONITOR	{!by $fa}
+!macro b_USING	{!by $fb}
+!macro b_UNTIL	{!by $fc}
+!macro b_WHILE	{!by $fd}
+; $fe prefixes extended tokens, see below
+
+
+; extended (16-bit) tokens, $ce range:
+
+; extended token $ce $00 isn't used
+; extended token $ce $01 isn't used
+!macro b_POT	{!wo $02ce:!pet '('}
+!macro b_BUMP	{!wo $03ce:!pet '('}
+!macro b_PEN	{!wo $04ce:!pet '('}
+!macro b_RSPPOS	{!wo $05ce:!pet '('}
+!macro b_RSPRITE	{!wo $06ce:!pet '('}
+!macro b_RSPCOLOR	{!wo $07ce:!pet '('}
+!macro b_XOR	{!wo $08ce:!pet '('}
+!macro b_RWINDOW	{!wo $09ce:!pet '('}
+!macro b_POINTER	{!wo $0ace:!pet '('}
+
+
+; extended (16-bit) tokens, $fe range:
+
+; extended token $fe $00 isn't used
+; extended token $fe $01 isn't used
+!macro b_BANK	{!wo $02fe}
+!macro b_FILTER	{!wo $03fe}
+!macro b_PLAY	{!wo $04fe}
+!macro b_TEMPO	{!wo $05fe}
+!macro b_MOVSPR	{!wo $06fe}
+!macro b_SPRITE	{!wo $07fe}
+!macro b_SPRCOLOR	{!wo $08fe}
+!macro b_RREG	{!wo $09fe}
+!macro b_ENVELOPE	{!wo $0afe}
+!macro b_SLEEP	{!wo $0bfe}
+!macro b_CATALOG	{!wo $0cfe}
+!macro b_DOPEN	{!wo $0dfe}
+!macro b_APPEND	{!wo $0efe}
+!macro b_DCLOSE	{!wo $0ffe}
+!macro b_BSAVE	{!wo $10fe}
+!macro b_BLOAD	{!wo $11fe}
+!macro b_RECORD	{!wo $12fe}
+!macro b_CONCAT	{!wo $13fe}
+!macro b_DVERIFY	{!wo $14fe}
+!macro b_DCLEAR	{!wo $15fe}
+!macro b_SPRSAV	{!wo $16fe}
+!macro b_COLLISION	{!wo $17fe}
+!macro b_BEGIN	{!wo $18fe}
+!macro b_BEND	{!wo $19fe}
+!macro b_WINDOW	{!wo $1afe}
+!macro b_BOOT	{!wo $1bfe}
+!macro b_WIDTH	{!wo $1cfe}
+!macro b_SPRDEF	{!wo $1dfe}
+!macro b_QUIT	{!wo $1efe}; "unimplemented command"
+!macro b_STASH	{!wo $1ffe}
+; extended token $fe $20 isn't used
+!macro b_FETCH	{!wo $21fe}
+; extended token $fe $22 isn't used
+!macro b_SWAP	{!wo $23fe}
+!macro b_OFF	{!wo $24fe}; "unimplemented command"
+!macro b_FAST	{!wo $25fe}
+!macro b_SLOW	{!wo $26fe}

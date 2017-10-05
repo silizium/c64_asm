@@ -1,0 +1,23 @@
+
+
+                                 ACME
+
+         ...the ACME Crossassembler for Multiple Environments
+
+                 --- the example source code file ---
+
+
+To assemble the given example source code file, change to the
+"example" directory and type
+
+    acme -v3 MacEdit.a
+
+The "-v3" option sets the verbose mode to level 3, producing some more
+informational output.
+ACME will parse the source code files and will then produce a file
+called "MacEdit7.o". You may compare that file to the file called
+"Expected" to make sure ACME works as it should do.
+
+Just in case you wonder: "MacEdit" is an unusably bad text editor for
+the C128.
+

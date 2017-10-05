@@ -1,0 +1,772 @@
+
+
+                                 ACME
+
+         ...the ACME Crossassembler for Multiple Environments
+
+                        --- pseudo opcodes ---
+
+
+This is a list of all the pseudo opcodes currently implemented.
+Stuff in square brackets is optional, stuff followed by "*" may be
+given more than once. This list is not sorted alphabetically, the
+pseudo opcodes are grouped together according to their usage.
+
+
+
+
+***   How to insert values
+
+
+
+
+Call:		!08 EXPRESSION [, EXPRESSION]*
+
+Purpose:	Insert 8-bit values.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts.
+
+Aliases:	"!8", "!by", "!byte"
+
+Example:	!08 127, label, -128 ; output some values
+		!by 14, $3d, %0110, &304, <*, "c"
+		!byte 3 - 4, label1 EOR label2, 2 ^ tz, (3+4)*7
+
+
+
+
+Call:		!16 EXPRESSION [, EXPRESSION]*
+
+Purpose:	Insert 16-bit values.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts.
+
+Aliases:	"!wo", "!word"
+
+Example:	!16 65535, label, -32768 ; output some values
+		!wo 14, $4f35, %100101010010110, &36304, *, "c"
+		!word 3000 - 4, a1 AND a2, 2 ^ tz, (3+4)*70, l1 & .j2
+
+
+
+
+Call:		!24 EXPRESSION [, EXPRESSION]*
+
+Purpose:	Insert 24-bit values.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts.
+
+Example:	!24 16777215, label, -8388608, 14, $6a4f35
+		!24 %10010110100101010010110, &47336304, *, "c"
+		!24 300000 - 4, a1 AND a2, 2 ^ tz, (3+4)*70, l1 & .j2
+
+
+
+
+Call:		!32 EXPRESSION [, EXPRESSION]*
+
+Purpose:	Insert 32-bit values.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts.
+
+Example:	!32 $7fffffff, label, -$80000000, 14, $46a4f35
+		!32 %1001011010010101001011010010, &4733630435, *, "c"
+		!32 300000 - 4, a AND a2, 2 ^ tz, (3+4)*70, l1 & .j2
+
+
+
+
+Call:		!fill AMOUNT [, VALUE]
+
+Purpose:	Fill amount of memory with value.
+
+Parameters:	AMOUNT: Any formula the value parser accepts, but it
+		must be solvable even in the first pass.
+		VALUE: Any formula the value parser accepts. If
+		omitted, a default value is used (currently zero).
+
+Aliases:	"!fi"
+
+Example:	!fi 256, $ff ; reserve 256 bytes of space
+
+
+
+
+***   How to insert text strings
+
+
+
+
+Call:		!convtab KEYWORD
+
+Purpose:	Choose text conversion table.
+
+Parameters:	KEYWORD: Currently valid keywords are "pet", "scr" and
+		"raw" (without quotes):
+		"pet" converts to PetSCII,
+		"scr" converts to C64 screencode,
+		"raw" doesn't convert at all.
+		Before encountering this PO, ACME defaults to "raw".
+		This PO supersedes the now deprecated "!cbm".
+
+Aliases:	"!ct"
+
+Example:	!ct raw
+		!tx "Test" ; Outputs $54 $65 $73 $74
+		!ct pet
+		!tx "Test" ; Outputs $d4 $45 $53 $54
+		!ct scr
+		!tx "Test" ; Outputs $54 $05 $13 $14
+
+
+
+
+Call:		!cbm
+
+Purpose:	Use PetSCII as the text conversion table. This pseudo
+		opcode still works, but is now deprecated because
+		"!ct" supersedes it. Use "!ct pet" instead.
+
+Example:	!cbm ; will give a "use !ct pet instead" warning.
+		!tx "Test" ; Outputs $d4 $45 $53 $54
+
+
+
+
+Call:		!text STRING_VALUE [, STRING_VALUE]*
+
+Purpose:	Output the given string(s) using the current
+		conversion table.
+
+Parameters:	STRING_VALUE: Can be either a string given in double
+		quotes or any formula the value parser accepts.
+		Please note that formula results won't be converted.
+
+Aliases:	"!tx"
+
+Example:	!tx "Loading...", Char_NewLine, "Filename:", 0
+
+
+
+
+Call:		!pet STRING_VALUE [, STRING_VALUE]*
+
+Purpose:	Output the given string(s) using the PetSCII
+		conversion table (This means to exchange the upper-
+		and lowercase characters; useful for C64 programs).
+
+Parameters:	STRING_VALUE: Can be either a string given in double
+		quotes or any formula the value parser accepts.
+		Please note that formula results won't be converted.
+
+Example:	!pet "Loading...", Char_NewLine, "Filename:", 0
+
+
+
+
+Call:		!raw STRING_VALUE [, STRING_VALUE]*
+
+Purpose:	Output the given string(s) without any conversion at
+		all.
+
+Parameters:	STRING_VALUE: Can be either a string given in double
+		quotes or any formula the value parser accepts.
+
+Example:	!raw "Loading...", Char_NewLine, "Filename:", 0
+
+
+
+
+Call:		!scr STRING_VALUE [, STRING_VALUE]*
+
+Purpose:	Output the given string(s) using the C64 screen code
+		conversion table (useful for C64 programs, as you will
+		have guessed).
+
+Parameters:	STRING_VALUE: Can be either a string given in double
+		quotes or any formula the value parser accepts.
+		Please note that formula results won't be converted.
+
+Example:	!scr "Loading...", Char_NewLine, "Filename:", 0
+
+
+
+
+Call:		!scrxor XOR_VALUE, STRING_VALUE [, STRING_VALUE]*
+
+Purpose:	Output the given string(s) using the C64 screen code
+		conversion table and exclusive-OR-ing the results with
+		the given value (useful for C64 programs when inverse
+		video is needed, or EBC mode, etc.).
+
+Parameters:	XOR_VALUE: Any formula the value parser accepts.
+		STRING_VALUE: Can be either a string given in double
+		quotes or any formula the value parser accepts.
+		Please note that formula results will be neither
+		converted nor exclusive-OR-d.
+
+Example:	!scrxor $80, "Loading..."
+
+
+
+
+***   File stuff
+
+
+
+
+Call:		!to FILENAME [, FILETYPE]
+
+Purpose:	Define the output filename and file type. If this
+		opcode isn't used, ACME still fully processes the
+		source code - as the resulting binary isn't stored,
+		this only serves to check for errors.
+
+Parameters:	FILENAME: A file name given in "..." quoting.
+		FILETYPE: Currently valid file types are "cbm" and
+		"plain" (without quotes):
+		"cbm" produces output files in Commodore format, where
+		the first two bytes are the load address.
+		"plain" produces files without load addresses.
+		If FILETYPE is omitted, ACME defaults to "cbm".
+
+Example:	!to "eprom.o", plain ; assemble into this file, don't
+		add a cbm-style load address.
+
+
+
+
+Call:		!source FILENAME
+
+Purpose:	Assemble another source code file. After having
+		processed the new file, ACME continues processing the
+		old one.
+
+Parameters:	FILENAME: A file name given in "..." quoting (load
+		from current directory) or in <...> quoting (load from
+		library).
+
+Aliases:	"!src"
+
+Example:	!src <6502/std.a> ; Include standard file for the 6502
+		; CPU from the library.
+		!src "Macros.a" ; Include the given file from the
+		; current directory.
+
+
+
+
+Call:		!binary FILENAME [, [SIZE] [, [SKIP]]]
+
+Purpose:	Insert binary file directly into output file.
+
+Parameters:	FILENAME: A file name given in "..." quoting (load
+		from current directory) or in <...> quoting (load from
+		library).
+		SIZE: Any formula the value parser accepts, but it
+		must be solvable even in the first pass. If SIZE is
+		given, it is used: If the file is longer, only SIZE
+		bytes are read; if it is shorter, ACME will use
+		padding until SIZE is reached. If SIZE is omitted,
+		ACME will include the file until EOF.
+		SKIP: Any formula the value parser accepts. If SKIP is
+		omitted, it defaults to zero. ACME will start loading
+		the file from file offset SKIP. So C64 coders wanting
+		to include C64 files without their load addresses
+		should use a SKIP value of 2.
+
+Aliases:	"!bin"
+
+Example:	!bin <Own/menudata.b> ; insert file from ACME library
+		!bin "tables/asc2pet.b", 256, 2 ; insert 256 bytes
+		; from the given file, starting from offset 2.
+
+
+
+
+Call:		!sl FILENAME
+
+Purpose:	Save all the global labels to the given file after the
+		assembly is finished. This table could be loaded
+		during another assembly session using the "!source"
+		pseudo opcode.
+
+Parameters:	FILENAME: A file name given in "..." quoting.
+
+Example:	!sl "Labels.a" ; produce label dump after assembly
+
+
+
+
+***   Local labels
+
+
+
+
+Call:		!zone [TITLE]
+
+Purpose:	Switch to new zone of local labels. Each zone ends
+		where the next one begins. If you want to nest zones,
+		you have to use "!subzone" instead (see below).
+
+Parameters:	TITLE: May consist of letters and digits. Its only
+		purpose is to be displayed in error messages, so it'll
+		be omitted in most cases.
+
+Aliases:	"!zn"
+
+Example:	!zn LinkedList_Init
+
+
+
+
+Call:		!subzone [TITLE] { LINES }
+
+Purpose:	Use a new zone of local labels. After having processed
+		the given block, ACME will use the old zone again.
+		Using this pseudo opcode, you can nest zones of local
+		labels.
+
+Parameters:	TITLE: May consist of letters and digits. Its only
+		purpose is to be displayed in error messages, so it'll
+		be omitted in most cases.
+		LINES: A block of assembler statements.
+
+Aliases:	"!sz"
+
+Example:	!sz LinkedList {
+		  ; imagine some code here...
+		  !zn LinkedList_Init
+		  ; imagine some more code here...
+		  !sz LinkedList_Body {
+		    ; imagine yet some more code here...
+		    !zn LinkedList_SecondPart
+		    ; imagine still some more code here...
+		  }
+		  !zn LinkedList_End
+		  ; you know what to imagine here...
+		}
+
+
+
+
+***   Flow control
+
+
+
+
+Call:		!if CONDITION { LINES } [ else { LINES } ]
+
+Purpose:	Conditional assembly. If the given condition is true,
+		the first block of lines will be parsed; if it isn't,
+		the second block will be parsed instead (if present).
+
+Parameters:	CONDITION: Any formula the value parser accepts, but
+		it must be solvable even in the first pass.
+		LINES: A block of assembler statements.
+
+Example:	!text "Black", 0   ; Choose wording according to the
+		!if country = uk { ; content of the "country" label.
+		  !text "Grey"
+		} else {
+		  !text "Gray"
+		}
+		!byte 0
+		!text "White", 0
+
+		!if debug { lda #"z":jsr char_output } ; Insert some
+		; debugging commands if the label "debug" is not zero.
+
+
+
+
+Call:		!ifdef LABEL { LINES } [ else { LINES } ]
+
+Purpose:	Conditional assembly, depending on whether a label is
+		already defined or not. If it is defined, the first
+		block of lines will be parsed; if it isn't, the second
+		block will be parsed instead (if present). This opcode
+		was only added to speed up parsing of library files.
+		Only use it in your own files if you're sure you
+		*really* know what you are doing - using it in the
+		wrong place will result in loads of error messages.
+
+Parameters:	LABEL: Any valid label name.
+		LINES: A block of assembler statements.
+
+Example:	; this was taken straight from <6502/std.a>:
+		!ifdef Lib_6502_std_a !eof ; only parse this file once
+		Lib_6502_std_a = 1
+
+
+
+
+Call:		!for LABEL, TIMES { LINES }
+
+Purpose:	Looping assembly. The block of lines will pe parsed
+		TIMES times. For a more flexible possibility, have a
+		look at "!do" below.
+
+Parameters:	LABEL: Any valid label name. The label's value will
+		show the number of the loop's current repetition:
+		In the first repetition it will have the value 1, in
+		the last repetition it will have the value TIMES.
+		TIMES: Any formula the value parser accepts, but it
+		must be solvable even in the first pass. Negative
+		values are forbidden, zero causes the block to be
+		skipped.
+		Please note that it is impossible to change the number
+		of loop cycles "inside" the loop by fiddling with the
+		counter (using the "!set" pseudo opcode): The "!for"
+		routine keeps its own copy of the counter value and
+		only sets the label value, it never reads it back.
+		This was done to eliminate a possibility to hang ACME.
+
+Example:	; conversion table: integer to BCD
+	int2BCD !for Outer, 10 {
+		  !for Inner, 10 {
+		    !byte ((Outer-1) << 4) OR (Inner-1)
+		  }
+		}
+		!fill 156, $ff ; values above 99 give 255 (invalid)
+
+		; conversion table: BCD to integer
+	BCD2int !for Outer, 10 {
+		  !for Inner, 10 {
+		    !byte 10 * (Outer-1) + (Inner-1)
+		  }
+		  !fill 6, $ff ; invalid BCD values give 255
+		}
+		!fill 96, $ff ; invalid BCD values give 255
+
+
+
+
+Call:		!set LABEL = VALUE
+
+Purpose:	Assign given value to label even if the label already
+		has a different value. Needed for loop counters when
+		using "!do", for example. Only use this opcode for
+		something else if you're sure you *really* know what
+		you are doing... :)
+
+Parameters:	LABEL: Any valid label name.
+		VALUE: Any formula the value parser accepts.
+
+Example:	see "!do" below
+
+
+
+
+Call:		!do [KEYWORD CONDITION] { LINES } [KEYWORD CONDITION]
+
+Purpose:	Looping assembly. The block of lines can pe parsed
+		several times, depending on the given condition(s).
+		Conditions may be placed before or after the block (or
+		even at both places), they are then parsed in every
+		repetition before or after the block respectively. If
+		there is a condition before the block and it isn't
+		met when first checked, the block will be skipped.
+
+Parameters:	KEYWORD: Either "until" or "while" (without quotes).
+		CONDITION: Any formula the value parser accepts, but
+		it must be solvable even in the first pass.
+		LINES: A block of assembler statements.
+
+Example:	; a loop with conditions at both start and end
+		!set a = 0                   ; init loop counter
+		!do while loop_flag = TRUE {
+		  lda #a
+		  sta label+a
+		  !set a = a + 1
+		} until a > 6
+
+		; a loop with a condition at the start
+		!do while * < $c000 { nop }
+
+		; a loop with a condition at the end
+		!do { !wo * + base } while * < base + 345
+
+		; a never ending loop - this will cause an error
+		!do while 3 < 4 { nop } until 3 = 4
+
+		; an empty loop - this will hang ACME
+		!do until 3 = 4 {     } while 3 < 4
+
+
+
+
+Call:		!endoffile
+
+Purpose:	Stop processing the current source file. Using this
+		pseudo opcode you can add explanatory text inside your
+		source file without having to comment out every single
+		line of it.
+
+Aliases:	"!eof"
+
+Example:	rts ; some assembler mnemonic
+		!eof
+		Though this text isn't preceded by a semicolon, it is
+		treated as if it were a comment. In fact, ACME doesn't
+		even parse this anymore - the file gets closed when
+		"!eof" is reached.
+
+
+
+
+***   Macro usage
+
+
+
+
+Call:		!macro TITLE [LABEL [, LABEL]*] { LINES }
+
+Purpose:	Define a macro.
+
+Parameters:	TITLE: The macro's desired name (same rules as for
+		label names). If the title's first character is a dot
+		("."), the macro will be local (though why anyone
+		could want this is beyond me).
+		LABEL: The desired name for the parameter value at
+		call time. Normally, these parameter labels should be
+		local (first character a dot), as different macro
+		calls will almost for sure have different parameter
+		values.
+		LINES: A block of assembler statements.
+
+Example:	; far branch, as defined in <6502/std.a>
+		!macro bne .target {
+		  bne * + 5
+		  jmp .target
+		}
+
+		; increase 16-bit counters
+		!macro dinc .target {
+		  inc .target
+		  bne .j ;"bne * + 5" wouldn't work with ZP locations
+		  inc .target + 1
+		.j
+		}
+
+		; load A and X
+		!macro ldax .target {
+		  lda .target
+		  ldx .target + 1
+		}
+
+		; store A and X
+		!macro stax .target {
+		  sta .target
+		  stx .target + 1
+		}
+
+
+
+
+Call:		+TITLE [EXPRESSION [, EXPRESSION]*]
+
+Purpose:	Call a macro, using the given parameter values.
+
+Parameters:	TITLE: The macro's name as given in its definition.
+		EXPRESSION: Any formula the value parser accepts.
+
+Example:	inc label
+		bne mark   ; "near" branch
+		inc label2
+		+bne mark2 ; "far" branch
+
+		inc $fa   ; increase  8-bit counter
+		+dinc $fb ; increase 16-bit counter
+
+		ldy label    ; get byte
+		+ldax label2 ; get two bytes
+
+		; using macro calls in a macro definition
+		!macro cp16 .source, .target {
+		  +ldax .source
+		  +stax .target
+		}
+
+
+
+
+***   Segment assembly
+
+
+
+
+Call:		*= EXPRESSION
+
+Purpose:	Set program counter to given value and start new
+		segment. This opcode must be given at least once.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts, but
+		it must be solvable even in the first pass.
+
+Example:	!to "TinyDemo" ; define output file
+		*= $0801       ; Start at C64 BASIC start
+		+basic_header  ; Call macro to create program header
+		!src "main.a"  ; include main program
+		*= $1000       ; jump to new segment
+		!bin "music.b" ; load music to $1000
+		*= $8000       ; jump to new segment
+		!bin "pic.b"   ; load graphics to $8000
+		; After assembly, ACME will save everything from $0801
+		; up to the highest address written to. The resulting
+		; file will contain some big unused areas (zero'd),
+		; but demos will get compressed anyway... :)
+
+
+
+
+Call:		!initmem EXPRESSION
+
+Purpose:	Define "unchanged" memory. ACME will fill its output
+		buffer completely with the given value before storing
+		the assembled code. So gaps between segments will
+		contain the desired byte when writing the output file.
+		If this PO isn't used, ACME zero's the buffer.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts, but
+		it must be solvable even in the first pass (because
+		this opcode will be ignored in all later passes).
+
+Example:	!initmem $ea   ; Default memory content is now $ea.
+		*= $0801       ; Start at C64 BASIC start
+		+basic_header  ; Call macro to create program header
+		!src "main.a"  ; include main program
+		*= $1000       ; jump to new segment
+		!bin "music.b" ; load music to $1000
+		*= $8000       ; jump to new segment
+		!bin "pic.b"   ; load graphics to $8000
+		; This is the same example as before, but now the big
+		; unused areas will contain the value $ea instead of
+		; zero.
+
+		!initmem $ff ; Default memory content is now $ff.
+		; Useful if you want to store your code in an EPROM.
+
+
+
+
+***   Offset assembly
+
+
+
+
+Call:		!pseudopc EXPRESSION
+
+Purpose:	Assemble code as if the program counter had the given
+		value, effectively producing a program that has to be
+		copied to a different address space before being run.
+
+Parameters:	EXPRESSION: Any formula the value parser accepts, but
+		it must be solvable even in the first pass.
+
+Example:	see "!realpc" below
+
+
+
+
+Call:		!realpc
+
+Purpose:	Restore the program counter to its real value,
+		therefore finishing offset assembly.
+
+Example:	*= $c000
+		!word * ; places the value $c000 to address $c000
+		!word * ; places the value $c002 to address $c002
+		!pseudopc $0400
+		!word * ; places the value $0400 to address $c004
+		!word * ; places the value $0402 to address $c006
+		!realpc
+		!word * ; places the value $c008 to address $c008
+		!word * ; places the value $c00a to address $c00a
+		; Sorry, but every *meaningful* example would have
+		; been quite long...
+
+
+
+
+***   Miscellaneous
+
+
+
+
+Call:		!align ANDVALUE, EQUALVALUE [, FILLVALUE]
+
+Purpose:	Fill memory until a matching address is reached. ACME
+		outputs FILLVALUE until "program counter AND ANDVALUE"
+		equals EQUALVALUE.
+
+Parameters:	ANDVALUE: Any formula the value parser accepts, but it
+		must be solvable even in the first pass.
+		EQUALVALUE: Any formula the value parser accepts, but
+		it must be solvable even in the first pass.
+		FILLVALUE: Any formula the value parser accepts. If it
+		is omitted, a default value is used (currently 234,
+		that's the 6502 CPU's NOP command).
+
+Example:	; eliminate the 6502's JMP()-Bug:
+		!align 1, 0 ; wait for even address
+	Label   !word Pointer
+
+		; align code to page border for speed increase
+		!align 255, 0
+
+
+
+
+Call:		!cpu KEYWORD
+
+Purpose:	Select the processor to produce code for. If this PO
+		isn't used, ACME defaults to the 6502 CPU. ACME will
+		give errors if you try to assemble commands the chosen
+		CPU does not have. You can change the chosen CPU at
+		any time.
+
+Parameters:	KEYWORD: Currently valid keywords are "6502", "65c02"
+		and "65816" (without the double quotes).
+
+Example:	!cpu 65816 ; allow new commands
+
+
+
+
+***   65816-specific pseudo opcodes
+
+
+
+
+Call:		!al
+
+Purpose:	Assume long (16 bits) accumulator. Only allowed when
+		producing code for the 65816 CPU.
+
+
+
+
+Call:		!as
+
+Purpose:	Assume short (8 bits) accumulator. Only needed when
+		producing code for the 65816 CPU. Short accumulator is
+		the default in every pass.
+
+
+
+
+Call:		!rl
+
+Purpose:	Assume long (16 bits) index registers. Only allowed
+		when producing code for the 65816 CPU.
+
+
+
+
+Call:		!rs
+
+Purpose:	Assume short (8 bits) index registers. Only needed
+		when producing code for the 65816 CPU. Short registers
+		are the default in every pass.
+
