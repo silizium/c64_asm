@@ -1,0 +1,39 @@
+!to "status.bin",cbm
+!cpu 6502
+*=$C000
+
+;
+; Aus Data Becker - Das Maschinensprache Buch Zum Commodore 64
+;
+; Fehlerkanal der Floppy auslesen und auf dem Bildschirm ausgeben
+
+   open = $ffc0
+ setfls = $ffba
+ setnam = $ffbd
+ print  = $ffd2
+ clrch  = $ffcc
+ input  = $ffcf
+ chkin  = $ffc6
+ close  = $ffc3
+ status = $90
+
+
+; Floppy Status
+
+  lda #$01     ; Kanal
+  ldx #$08     ; Geraetenummer
+  ldy #$0f     ; Sekundaeradresse
+  jsr setfls   ; logische Filenummer in Akku
+  lda #$00     ; kein Filename
+  jsr setnam   ; 
+  jsr open     ; File oeffnen
+  ldx #$01     ; Eingabe
+  jsr chkin    ; vom Fehlerkanal
+a:jsr input    ; Zeichen von Floppy
+  jsr print    ; und ausgeben
+  bit status   ; Status testen
+  bvc a        ; ok, sonst springe zu a
+  jsr clrch    ; CMD Modus beenden
+  lda #$01     ; Kanal
+  jsr close    ; schliessen
+  rts          ; 

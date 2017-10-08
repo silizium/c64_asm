@@ -1,0 +1,29 @@
+!to "myreutest.bin",cbm
+    !cpu 6502
+    *=$1000
+
+
+      lda #$00       ;Null
+      sta $df00      ;nach Register 0
+      cmp $df00      ;noch drin?
+      beq noreu      ;dann keine REU!
+
+      ldx #$02       ;Zaehler
+loop  sta $df00,x    ;speichern mit Akku (0)
+      cmp $df00,x    ;und vergleichen 
+      bne noreu      ;nicht gleich, keine REU!
+      inx            ;Zaehler erhoehen
+      cpx #$05       ;
+      beq loop       ;
+
+      lda #<jatxt    ;"REU GEFUNDEN"
+      ldy #>jatxt    ;...
+      jmp $ab1e      ;ausgeben und Ende.
+   noreu:
+      lda #<notxt    ;"KEINE REU GEFUNDEN"
+      ldy #>notxt    ;...
+      jmp $ab1e      ;ausgeben und Ende.
+
+   jatxt  !text "REU gefunden!",0
+
+   notxt  !text "REU nicht gefunden!",0

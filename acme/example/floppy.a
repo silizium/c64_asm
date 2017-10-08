@@ -1,0 +1,101 @@
+!to "floppy.bin"
+!cpu 6502
+*=$C000
+
+;
+;
+; Hier findest Du ein paar kleine Routinen fuer die Floppy.
+;
+;   $C000 #49152 - Directory (8)
+;   $C06C #49260 - Init Floppy (8)
+;   $c082 #49282 - Validate Floppy (8)
+;
+;   
+
+; Directory output on screen
+
+        lda#$24  ; filename $
+        sta$fb   ; save
+        lda#$fb  ; adress
+        sta$bb   
+        lda#$00  ; high byte
+        sta$bc
+        lda#$01  ; length
+        sta$b7
+        lda#$08  ; drive id
+        sta$ba
+        lda#$60  ;
+        sta$b9        
+        jsr$F3D5 ; File open
+        lda$ba
+        jsr$FFB4 ; talk 
+        lda#$b9
+        jsr$ff96 ;
+        lda#$00
+        sta$90
+        ldy#$03
+   loop sty$fb
+        jsr$FFA5 ; byte from floppy
+        sta$fc
+        ldy$90
+        BNE close
+        JSR$FFA5 ; get byte
+        ldy$90 
+        BNE close
+        ldy$fb
+        dey
+        bne loop
+        ldx$fc
+        jsr$BDCD          ; 16bit number output
+        lda#$20           ; space
+        jsr$FFD2          ; type space
+getbyte jsr$ffa5          ; get next byte
+        ldx$90            ; status 
+        bne close
+        tax               ; test byte
+        beq cr            ; zero ? go to cr
+        jsr$FFD2          ; else type again
+        jmp getbyte       ; get next 
+    cr  lda#$0d           ; cr
+        jsr$FFD2          ; type
+        ldy#$02           ; 2 byte for link adr
+        bne loop          ; work again
+  close jsr$F642          ; close 
+        rts               ; go home
+        nop
+        nop
+        nop
+        jsr open         ; open 15,8,15,"i"
+        lda #$01
+        ldx#<(init)
+        ldy#>(init)
+        jsr$ffbd
+        jsr$ffc0
+        jsr clse
+        rts
+        nop
+        nop
+        nop
+       jsr open         ; open 15,8,15,"v"
+       lda #$01      
+       ldx#<(validate)
+       ldy#>(validate)
+       jsr$ffbd
+       jsr$ffc0
+       jsr clse
+       rts
+       nop
+       nop
+open   lda#$0f          ;open 15,8,15     
+       ldx#$08    
+       ldy#$0f
+       jsr $ffba
+       rts
+       nop
+       nop
+clse  lda#$0f          ;close 15        
+       jsr$ffc3
+       rts
+
+validate !byte 86
+init !byte 73

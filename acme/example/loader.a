@@ -1,0 +1,38 @@
+ !to "loader.prg",cbm
+   *=$1000
+   
+
+;--------------------------------------------------
+; kernal load
+;--------------------------------------------------
+
+      LDA #$00
+      JSR $FF90                            ; enable/disable KERNAL messages        
+      LDA fnnumb 
+      LDX drive 
+      LDY fn_sec 
+      JSR $FFBA                            ; Kernal : Set Logical File Parameters
+      LDA fnchars 
+      LDX #<(fname)
+      LDY #>(fname)
+      JSR $FFBD                            ; Kernal : Set Filename
+      LDA #$00                             ; 0 = load
+      LDX memlo 
+      LDY memhi 
+      JSR $FFD5                            ; Load (to address)  
+      rts
+       
+
+
+;--------------------------------------------------
+; parameter setup  
+;--------------------------------------------------
+     
+   drive   !byte $08 
+   memlo   !byte $00
+   memhi   !byte  $20
+   fnchars !byte  $08
+   fnnumb  !byte  $0F
+   fn_sec  !byte  $00
+
+   fname !tx "CHARSET1"     

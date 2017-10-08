@@ -1,0 +1,164 @@
+!to "multiplexer.prg",cbm
+      
+     ;---------------------------------------------------------------------------
+     ;
+     ; Ein kleines Sprite Multiplexer-Beispiel mit Sprite 1 
+     ;
+     ; In diesem Beispiel wird Sprite 1 viermal durch die Multiplexer-Routine
+     ; auf den Bildschirm gebracht. 
+     ;
+     ; Basics : Rasterzeilen-IRQ
+     ; @L       Auf die gewuenschte Y-Position (Rasterzeile) warten  
+     ;          (neue) Y-Position setzen         
+     ;          (neuen) Sprite-Pointer setzen
+     ;          ggf. Farben und weitere Register aktualisieren
+     ;          wenigstens 21+1 (Spritehoehe+1) Rasterzeilen warten 
+     ;          weiter bei @L
+     ;
+     ; Auf einer Rasterzeile koennen nur einmal 8 Sprites dargestellt werden. 
+     ;
+     ;
+     ; Compiler : ACME  
+     ;
+     ; Michael Sachse, 20. Maerz 2007 
+     ;
+     ;---------------------------------------------------------------------------
+      
+     
+     ;-- Basicstart
+     
+     *= $0800
+     !byte $00,$0c,$08,$0a,$00,$9e,$32,$30,$36,$34,$00,$00,$00,$00
+          
+      *= $0810
+       
+     ;--------------------------------------------------   
+              
+              lda #00
+              sta $d020
+              sta $d021        ; Rahmen und Bildschirm schwarz 
+              lda #147
+              jsr $ffd2        ; Bildschirm loeschen
+              jsr setup_sprite ; Sprite 1 initalisieren 
+ 
+     ;--------------------------------------------------
+     ;  Neuen IRQ auf Raster
+     ;--------------------------------------------------
+              
+              sei  
+              lda #<int
+              sta $0314
+              lda #>int
+              sta $0315        ; neuer IRQ
+              lda #$00
+              sta $d012        ; Rasterzeile speichern
+              lda #$7f
+              sta $dc0d        ; Timer aus
+              lda #$01
+              sta $d019
+              sta $d01a        ; IRQ auf Rasterzeile festlegen 
+              cli
+              jmp *
+     
+     ;--------------------------------------------------
+     
+     int      lda $d019
+              and #$01
+              sta $d019        ; hat IRQ stattgefunden ?
+              bne irq
+              jmp $ea81
+               
+     ;--------------------------------------------------           
+     
+     irq      lda #$00
+              sta $d012
+     
+              jsr animate      ; auf X-Achse bewegen 
+     
+     
+     l0       lda $d012
+              cmp #78          ; y = 78
+              bne l0     
+              sta $d001
+              lda #$28         ; Spritepointer Sprite 1 setzen
+              sta $07f8        ; $0a00 = $28*$40
+     
+     l1       lda $d012
+              cmp #100         ; y = 100
+              bne l1
+              sta $d001          
+              lda #$29         ; Spritepointer neu setzen
+              sta $07f8
+              lda #6           ; eine neue Farbe
+              sta $d026
+     
+     l2       lda $d012
+              cmp #122         ; y = 122      
+              bne l2
+              sta $d001          
+              lda #$28         ; Spritepointer neu setzen
+              sta $07f8
+              lda #3
+              sta $d026
+     
+     l3       lda $d012
+              cmp #144          ; y =144     
+              bne l3
+              sta $d001            
+              lda #$29          ; Spritepointer neu setzen
+              sta $07f8
+              lda #2
+              sta $d026         ; eine neue Farbe
+     
+     le       lda $d012
+              cmp #255
+              bne le        
+              jmp $ea81
+              
+     ;--------------------------------------------------
+     ;   Sprite(s) auf X-Achse bewegen  
+     ;--------------------------------------------------    
+     
+     animate   inc $d000
+               lda $d000
+               bne ex
+               lda #50
+               sta $d000        
+     ex        rts
+     
+     ;--------------------------------------------------
+     ;   Sprite 1 initalisieren
+     ;--------------------------------------------------
+     
+     setup_sprite
+     
+               lda #1           ; Farben
+               sta $d025
+               lda #11
+               sta $d026
+               lda #15
+               sta $d027        ; setzen
+               lda #64
+               sta $d000        ; X-Position
+               lda #$01         ;
+               sta $d015        ; Sprite 1 an
+               sta $d01c        ; Multicolor
+               rts
+     
+     ;--------------------------------------------------
+     ;   2 Sprites 
+     ;--------------------------------------------------
+     
+     *=$0a00
+      
+     !byte $ff,$ff,$ff,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$f0 
+     !byte $00,$00,$b0,$00,$00,$A0,$00,$00,$AC,$00,$00,$F8,$00,$00,$FE,$0E 
+     !byte $f0,$aa,$a9,$7c,$aa,$aa,$5b,$ab,$ea,$aa,$eb,$fa,$ab,$03,$f0,$00 
+     !byte $03,$f0,$00,$03,$c0,$00,$03,$00,$00,$00,$00,$00,$ff,$ff,$ff,$ff 
+     
+     ; $0a40
+      
+     !byte $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+     !byte $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF  
+     !byte $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF  
+     !byte $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF

@@ -1,0 +1,137 @@
+;---- Joystick-Auswertung -- Branch-Reichweite
+
+
+r_up         lda $d001       ; rechts_hoch  (diagonal)
+             cmp #48
+             beq r_up_ex
+             lda $d000
+             cmp #252
+             beq r_up_ex
+             inc $d000
+             inc $d000
+             inc $d000
+             inc $d000
+             dec $d001
+             dec $d001
+             dec $d001
+             dec $d001
+r_up_ex      rts
+
+up           lda $d001       ; hoch    
+             cmp #48
+             beq up_ex
+             dec $d001
+             dec $d001
+             dec $d001
+             dec $d001
+up_ex        rts
+down         lda $d001       ; runter
+             cmp #196
+             beq d_ex
+             inc $d001
+             inc $d001
+             inc $d001
+             inc $d001
+d_ex         rts
+forw         lda $d000       ; rechts 
+             cmp #252
+             beq forw_ex
+
+             inc $d000
+             inc $d000
+             inc $d000
+             inc $d000
+
+forw_ex      rts
+backw        lda $d000       ; links 
+             cmp #40
+             beq backw_ex
+
+
+             dec $d000
+             dec $d000
+             dec $d000
+             dec $d000
+
+backw_ex     rts
+
+
+;-------------------------------------------------
+; Auswertung des Ports (aus IRQ)
+;-------------------------------------------------
+
+joystick
+          lda joy2
+          cmp #$76     
+          beq r_up     ; rechts hoch 
+          cmp #$7a
+          beq l_up     ; links oben
+          cmp #$79
+          beq l_down   ; links unten
+          cmp #$75
+          beq r_down   ; rechts unten
+          ror
+          bcc up       ; hoch 
+          ror
+          bcc down     ; runter
+          ror
+          bcc backw    ; links
+          ror
+          bcc forw     ; rechts
+          rts
+
+;-------------------------------------------------
+
+;-------------------------------------------------
+r_down       lda $d001       ; rechts_unten (diagonal)
+             cmp #196
+             beq r_down_ex
+             lda $d000
+             cmp #252
+             beq r_down_ex
+             inc $d000
+             inc $d000
+             inc $d000
+             inc $d000
+
+             inc $d001
+             inc $d001
+             inc $d001
+             inc $d001
+r_down_ex    rts
+
+
+l_down       lda $d001       ; links_unten (diagonal)
+             cmp #196
+             beq l_down_ex
+             lda $d000
+             cmp #40
+             beq l_down_ex
+             dec $d000
+             dec $d000
+             dec $d000
+             dec $d000
+
+             inc $d001
+             inc $d001
+             inc $d001
+             inc $d001
+l_down_ex    rts
+
+l_up         lda $d001       ; links_hoch (diagonal)
+             cmp #48
+             beq l_up_ex
+             lda $d000
+             cmp #40
+             beq l_up_ex
+             dec $d000
+             dec $d000
+             dec $d000
+             dec $d000
+             dec $d001
+             dec $d001
+             dec $d001
+             dec $d001
+ l_up_ex     rts
+
+;----------------------------------
