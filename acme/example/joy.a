@@ -1,0 +1,101 @@
+!to "joy.bin",cbm
+!cpu 6502
+*=$1000
+
+
+; Joysticktest
+; raw workfile
+
+
+
+cia1base = $dc00
+cia1portb =$dc01
+bsout =  $ffd2
+rahmen = $d020
+storage =$1100
+
+
+start    lda #$93
+         jsr$ffd2
+         ldx #$0a
+         ldy #$0e
+         jsr $fff0
+         ldx #$00
+         lda $1101,x
+         jsr bsout
+       
+mainloop jsr mainmask
+         lda cia1base
+         ror    
+         bcc oben
+         ror
+         bcc unten
+         ror 
+         bcc links
+         ror
+         bcc rechts
+         ror
+         bcc fire
+taste    lda cia1portb
+         cmp#$ff
+         beq mainloop
+         jmp ende
+
+center   ldx #$0a
+         ldy #$0e
+         jsr $fff0
+         ldx #$00
+         lda $1100,x
+         jsr bsout
+         jsr verzoegerung
+         jmp mainloop
+
+main2    ldy #$ff
+         jsr $eeb3
+         jmp mainloop
+
+oben    ldx #$08
+        ldy #$0e
+        jsr move
+        jmp center
+        
+unten   ldx #$0c
+        ldy #$0e
+        jsr move
+        jmp center
+
+links   ldx #$0a
+        ldy #$0c
+        jsr move
+        jmp center
+
+rechts  ldx #$0a
+        ldy #$10
+        jsr move
+        jmp center
+
+fire    inc rahmen
+        jmp main2
+
+move      jsr $fff0
+         ldx #$00
+         lda $1100,x
+         jsr bsout
+         jsr verzoegerung
+         lda #$93
+         jsr$ffd2
+         rts       
+
+
+verzoegerung ldx #$ff
+.loop2       ldy #$ff
+.loop1       dey
+             bne .loop1
+             dex
+             bne .loop2
+             rts
+
+mainmask  rts
+          
+
+ende rts

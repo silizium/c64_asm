@@ -1,0 +1,14 @@
+!to "test.bin",cbm
+!cpu 6502
+*=$1000
+
+
+; set screencolor and border to black (0)
+
+start
+
+   lda#$00
+   sta$d020
+   sta$d021
+   rts
+

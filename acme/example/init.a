@@ -1,0 +1,27 @@
+!to "init.bin",cbm
+!cpu 6502
+*=$1000
+
+; open 15,8,15,"i"  in Assembler
+;
+; sys 4099 to test 
+;
+; also possible to validate (v). You only need to change string.
+;
+
+ string !byte 73
+    
+init
+
+       lda#$0f           ; #15
+       ldx#$08           ; #8 
+       ldy#$0f           ;#15
+       jsr $ffba
+       lda #$01
+       ldx#<(string)
+       ldy#>(string)
+       jsr$ffbd
+       jsr$ffc0
+       lda#$0f           ;#15
+       jsr$ffc3          ;close
+       rts               
