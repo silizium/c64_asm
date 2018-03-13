@@ -112,9 +112,10 @@ _main:
 		adc     #0
 		sta     Ticks+3
 
-
+		chout  147	;clear screen
 		
-Loop:		bigout fl1
+Loop:		chout  19		;cursor to pos1
+		bigout fl1
 
 		bigmov fl3, fl1
 		bigadd fl3, fl2
@@ -549,7 +550,7 @@ bcdmultab: 	.repeat 10, J
 Ticks:		.res 4,$00
 Round:		.byte 4,0,0,0,0
 ;Bigint Variablen	
-		SIZE=32
+		SIZE=56
 
 fl1:		.byte SIZE
 		.repeat SIZE-1
