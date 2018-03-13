@@ -26,7 +26,7 @@
 		arg=accu+2
 
 
-.macro	chout char
+.macro		chout char
 		lda #char
 		jsr BSOUT
 .endmacro
@@ -84,37 +84,34 @@
 @lline: .word 0
 .endmacro
 
-
-
 		basicstart 2018
-
 _main:
 		RUNTIME=750     ;15*50 Ticks/Second
 		; Ticks = clock()+RUNTIME;
-		jsr     _clock
-		sta     Ticks
-		stx     Ticks+1
-		ldy     sreg
-		sty     Ticks+2
-		ldy     sreg+1
-		sty     Ticks+3
+		jsr _clock
+		sta Ticks
+		stx Ticks+1
+		ldy sreg
+		sty Ticks+2
+		ldy sreg+1
+		sty Ticks+3
 		clc
-		lda     Ticks
-		adc     #<RUNTIME
-		sta     Ticks
-		lda     Ticks+1
-		adc     #>RUNTIME
-		sta     Ticks+1
-		lda     Ticks+2
-		adc     #0
-		sta     Ticks+2
-		lda     Ticks+3
-		adc     #0
-		sta     Ticks+3
+		lda Ticks
+		adc #<RUNTIME
+		sta Ticks
+		lda Ticks+1
+		adc #>RUNTIME
+		sta Ticks+1
+		lda Ticks+2
+		adc #0
+		sta Ticks+2
+		lda Ticks+3
+		adc #0
+		sta Ticks+3
 
-		chout  147	;clear screen
+		chout 147	;clear screen
 		
-Loop:		chout  19		;cursor to pos1
+Loop:		chout 19		;cursor to pos1
 		bigout fl1
 
 		bigmov fl3, fl1
@@ -126,60 +123,35 @@ Loop:		chout  19		;cursor to pos1
 		;add Round counter (BCD)
 		sei
 		sed
-		ldy     Round
+		ldy Round
 		sec
-Addrounds:	lda     Round,y
-		adc     #0
-		sta     Round,y
+Addrounds:	lda Round,y
+		adc #0
+		sta Round,y
 		dey
-		bne     Addrounds
+		bne Addrounds
 		cld
 		cli
 
 		;
 		; if(clock()<Ticks) Loop;
 		;
-		jsr     _clock
+		jsr _clock
 		sec
-		sbc     Ticks
+		sbc Ticks
 		txa
-		sbc     Ticks+1
-		lda     sreg
-		sbc     Ticks+2
-		lda     sreg+1
-		sbc     Ticks+3
-		bpl     Exit
+		sbc Ticks+1
+		lda sreg
+		sbc Ticks+2
+		lda sreg+1
+		sbc Ticks+3
+		bpl Exit
 		jmp Loop
 Exit:
 		bigout Round
 
 		rts
 
-
-
-		jsr bigout
-		chout 13
-		lda #>fl1
-		pha
-		lda #<fl1
-		pha
-		jsr bigout
-		chout 13
-		lda #>fl3
-		pha
-		lda #<fl3
-		pha
-		;jsr _tistart
-		jsr bcdmul
-		;jsr _tistprint
-		chout 13
-		jsr bigout
-		chout 13
-		tsx
-		txa
-		axs #256-6				;illegal opc x=a and x-#
-		txs
-		rts
 
 ;####################
 ;Bigint Subroutinen #
