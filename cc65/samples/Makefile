@@ -60,7 +60,7 @@ EXELIST	=	ascii 		\
 		nachtm 		\
 		plasma 		\
 		sieve 		\
-		tgidemo
+		tgidemo		
 
 # --------------------------------------------------------------------------
 # Rules how to make each one of the binaries
@@ -101,6 +101,9 @@ sieve: 	       	$(CRT0) sieve.o $(CLIB)
 	@$(LD) -t $(SYS) -m $(basename $@).map -o $@ $^
 
 tgidemo:       	$(CRT0) tgidemo.o $(CLIB)
+	@$(LD) -t $(SYS) -m $(basename $@).map -o $@ $^
+
+fib:       	$(CRT0) fib.o $(CLIB)
 	@$(LD) -t $(SYS) -m $(basename $@).map -o $@ $^
 
 

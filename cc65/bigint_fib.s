@@ -1,14 +1,16 @@
-;bigint.s
+;bigint_fib.s
 ;for as65 assembler for cc65 package
-;Version 0.1
-;20071004 by H.Behrens
+;Version 1.0
+;20180313 by H.Behrens
 ;mail: pebbles@schattenlauf.de
+;cl65 -o bigint_fib -t c64 -C crypto/c64-asm.cfg bigint_fib.s
 		.setcpu "6502X"
 		.MACPACK generic
 ;		.import c64
 		.import BSOUT
-		.import _tistart,_tistop,_tistprint,_tiprint
+		.import _tistart,_tistop,_tistprint,_tiprint,_clock
 		.import bcd2bin, hexout
+		.importzp sreg
 
 ;		BSOUT = $FFD2		
 		pointer1=$fb						;$fb/$fc
@@ -27,6 +29,41 @@
 .macro	chout char
 		lda #char
 		jsr BSOUT
+.endmacro
+
+.macro		bigmov acc, ar
+		lda #<acc
+		sta accu
+		lda #>acc
+		sta accu+1
+		lda #<ar
+		sta arg
+		lda #>ar
+		sta arg+1
+		jsr bigmov
+.endmacro
+
+.macro		bigout ar
+		lda #>ar
+		pha
+		lda #<ar
+		pha
+		jsr bigout
+		pla
+		pla
+		chout 13
+.endmacro
+
+.macro		bigadd acc, ar
+		lda #<acc
+		sta accu
+		lda #>acc
+		sta accu+1
+		lda #<ar
+		sta arg
+		lda #>ar
+		sta arg+1
+		jsr bigadd
 .endmacro
 
 		.segment "CODE"
@@ -49,12 +86,76 @@
 
 
 
-		basicstart 2007
+		basicstart 2018
 
-_main: 		lda #>fl2
-		pha
-		lda #<fl2
-		pha
+_main:
+		RUNTIME=750     ;15*50 Ticks/Second
+		; Ticks = clock()+RUNTIME;
+		jsr     _clock
+		sta     Ticks
+		stx     Ticks+1
+		ldy     sreg
+		sty     Ticks+2
+		ldy     sreg+1
+		sty     Ticks+3
+		clc
+		lda     Ticks
+		adc     #<RUNTIME
+		sta     Ticks
+		lda     Ticks+1
+		adc     #>RUNTIME
+		sta     Ticks+1
+		lda     Ticks+2
+		adc     #0
+		sta     Ticks+2
+		lda     Ticks+3
+		adc     #0
+		sta     Ticks+3
+
+
+		
+Loop:		bigout fl1
+
+		bigmov fl3, fl1
+		bigadd fl3, fl2
+
+		bigmov fl1, fl2
+		bigmov fl2, fl3
+
+		;add Round counter (BCD)
+		sei
+		sed
+		ldy     Round
+		sec
+Addrounds:	lda     Round,y
+		adc     #0
+		sta     Round,y
+		dey
+		bne     Addrounds
+		cld
+		cli
+
+		;
+		; if(clock()<Ticks) Loop;
+		;
+		jsr     _clock
+		sec
+		sbc     Ticks
+		txa
+		sbc     Ticks+1
+		lda     sreg
+		sbc     Ticks+2
+		lda     sreg+1
+		sbc     Ticks+3
+		bpl     Exit
+		jmp Loop
+Exit:
+		bigout Round
+
+		rts
+
+
+
 		jsr bigout
 		chout 13
 		lda #>fl1
@@ -73,12 +174,6 @@ _main: 		lda #>fl2
 		chout 13
 		jsr bigout
 		chout 13
-;		pla
-;		pla
-;		pla
-;		pla
-;		pla
-;		pla
 		tsx
 		txa
 		axs #256-6				;illegal opc x=a and x-#
@@ -97,16 +192,17 @@ _main: 		lda #>fl2
 		ldy #0
 		lda (accu),y
 		tax
-		inx
 L1:		iny				;skip zero start
 		dex
+		beq L2
 		lda (accu),y
 		beq L1				;skip zero end
-L2:		lda (accu),y
+L2:		inx
+L3:		lda (accu),y
 		jsr bcdout
 		iny
 		dex
-		bne L2
+		bne L3
 		rts
 .endproc
 
@@ -131,6 +227,17 @@ L2:		lda (accu),y
 		tay
 		lda #0
 L1:		sta (accu),y
+		dey
+		bne L1
+		rts
+.endproc
+
+.proc bigmov	;accu=arg
+		ldy #0
+		lda (accu),y
+		tay
+L1:		lda (arg),y
+		sta (accu),y
 		dey
 		bne L1
 		rts
@@ -385,7 +492,7 @@ end1:		cld
 		
 		tsx				;Stackplatz temporäre Vars
 		txa
-		axs #256-4			;illegal opc x:=a and x-#
+		axs #4				;illegal opc x:=a and x-#
 		;dex
 		;dex
 		;dex
@@ -438,11 +545,24 @@ bcdmultab: 	.repeat 10, J
 		.byte ((I*J)/10)*16+(I*J) .mod 10
 		.endrep		
 		.endrep
-;Bigint Variablen		
-fl1:		.byte 8, 0,0,$03,$75, $12, $34, $56, $78
-fl2:		.byte 8, 0,0,$89,$00, $99, $99, $99, $99
-fl3:		.byte 16
-		.repeat 16
+
+Ticks:		.res 4,$00
+Round:		.byte 4,0,0,0,0
+;Bigint Variablen	
+		SIZE=32
+
+fl1:		.byte SIZE
+		.repeat SIZE-1
+		.byte 0
+		.endrep
+		.byte $01
+fl2:		.byte SIZE
+		.repeat SIZE-1
+		.byte 0
+		.endrep
+		.byte $01
+fl3:		.byte SIZE
+		.repeat SIZE
 		.byte 0
 		.endrep
 ;		.popseg
