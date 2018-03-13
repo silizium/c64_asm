@@ -520,7 +520,7 @@ bcdmultab: 	.repeat 10, J
 		.endrep
 
 Ticks:		.res 4,$00
-Round:		.byte 4,0,0,0,0
+Round:		.byte 2,0,0
 ;Bigint Variablen	
 		SIZE=56
 

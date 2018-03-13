@@ -1,6 +1,6 @@
-5 E=TI+15*50
-10 A=1:B=1:C=0
-20 FOR Z=1 TO 1480:PRINT Z,A
-30 C=A+B:A=B:B=C
-40 IF TI>E THEN END
-50 NEXT
+10 e = ti+15*50
+20 a = 1 : b = 1 : c = 0
+30 for z = 1 to 1480 : print z,a
+40 c = a+b : a = b : b = c
+50 if ti > e then end
+60 next
