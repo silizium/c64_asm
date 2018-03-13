@@ -2,7 +2,7 @@
 ;for as65 assembler for cc65 package
 ;Version 1.0
 ;20180313 by H.Behrens
-;mail: pebbles@schattenlauf.de
+;mail pebblesatschattenlaufdotde
 ;cl65 -o bigint_fib -t c64 -C crypto/c64-asm.cfg bigint_fib.s
 		.setcpu "6502X"
 		.MACPACK generic
