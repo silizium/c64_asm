@@ -1,0 +1,8 @@
+   10 data 160,0,152,153,0,4,200,208,249,96, -1
+   20 mem=12*4096
+   30 read byt
+   40 if byt=-1 then end
+   50 poke mem,byt
+   55 print byt,
+   60 mem=mem+1
+   70 goto 30
