@@ -1,4 +1,5 @@
 ; cl65 -t c64 -o print print.s -C crypto/c64-asm.cfg
+; Example CALL BY VALUE RETURN
 
 	.setcpu "6502X"
 	.macpack generic
@@ -23,7 +24,7 @@
 	.asciiz .sprintf ("%d", *+7)
 @lline:	.word 0
 .endmacro
-
+;print for by value return
 .macro	println text
 	jsr printbvr
 	.asciiz .sprintf("%s%c",text,13)
@@ -36,26 +37,20 @@
 _main:	println "hello world!"
 	rts
 ;------------------------------
-
-printbvr:	pla		
-				;sta pmod+1	;self modifying code
-	sta FREKZP
+; print by value return
+.proc printbvr
+	pla		
+	sta FREKZP		;sta pmod+1	;version with self modifying code
 	pla
-				;sta pmod+2
-	sta FREKZP+1
+	sta FREKZP+1		;sta pmod+2
 	ldy #0
-pmod:	
-				;lda $0100
-	lda (FREKZP),y
-	beq pexit
+@pmod:	
+	lda (FREKZP),y		;lda $0100
+	beq @pexit
 	jsr BSOUT
-	iny
-	bne pmod
-				;inc pmod+1
-				;bne pmod
-				;inc pmod+2
-				;bne pmod
-pexit:
+	iny			;inc pmod+1 ;bne pmod ;inc pmod+2 ;bne pmod
+	bne @pmod
+@pexit:
 	sec
 	tya
 	adc FREKZP
@@ -63,14 +58,8 @@ pexit:
 	lda #0
 	adc FREKZP+1
 	sta FREKZP+1
-	 
-	jmp (FREKZP)
-
-				;lda pmod+2
-				;pha
-				;lda pmod+1
-				;pha
-				;rts
+	jmp (FREKZP)		;lda pmod+2 ;pha ;lda pmod+1 ;pha ;rts
+.endproc
 
 ;	.segment "BSS"
 ;heap:	.byte 0
