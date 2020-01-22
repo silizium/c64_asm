@@ -1,11 +1,12 @@
 ; cl65 -t c64 -o print print.s -C crypto/c64-asm.cfg
-	putc = $ffd2
 
 	.setcpu "6502X"
 	.macpack generic
 	.macpack cbm
-	.import c64
+	.import c64	
 	.import BSOUT
+	.include "c64.inc"	;FREKZP=$fb
+
 
 .macro  basicstart nr
 	.org $0801
@@ -37,24 +38,41 @@ _main:	println "hello world!"
 ;------------------------------
 
 printbvr:	pla		
-	sta pmod+1	;self modifying code
+				;sta pmod+1	;self modifying code
+	sta FREKZP
 	pla
-	sta pmod+2
-pmod:	lda $0100
+				;sta pmod+2
+	sta FREKZP+1
+	ldy #0
+pmod:	
+				;lda $0100
+	lda (FREKZP),y
 	beq pexit
-	jsr putc
-	inc pmod+1
+	jsr BSOUT
+	iny
 	bne pmod
-	inc pmod+2
-	bne pmod
+				;inc pmod+1
+				;bne pmod
+				;inc pmod+2
+				;bne pmod
 pexit:
-	lda pmod+2
-	pha
-	lda pmod+1
-	pha
-	rts
+	sec
+	tya
+	adc FREKZP
+	sta FREKZP
+	lda #0
+	adc FREKZP+1
+	sta FREKZP+1
+	 
+	jmp (FREKZP)
 
-	.segment "BSS"
-heap:	.byte 0
+				;lda pmod+2
+				;pha
+				;lda pmod+1
+				;pha
+				;rts
+
+;	.segment "BSS"
+;heap:	.byte 0
 .end
 
