@@ -18,7 +18,7 @@
 .endmacro
 	.segment "CODE"
 
-	basicstart 2018
+	basicstart 2024
 
 	ldy #0
 loop:	lda text,y

@@ -1,0 +1,13 @@
+For creating the eprom contents for a real "MACH 128" cartridge eprom
+you will have to concatenate a "MACH 5" and a "MACH 128"- Under linux
+e.g.
+
+cat MACH_5*.bin MACH_128.bin > MACH_128_full.bin
+
+will work.
+It does not make much sense to join these binaries for emulator use
+esp. since C128 cartridge emulation is not supported by VICE so far.
+
+MACH-5 binaries coming with an additional "_128" suffix are suitable
+for C128 use as they have an extra function especially:
+"TOGGLE C128 KEYS"

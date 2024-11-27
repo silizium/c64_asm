@@ -1,0 +1,65 @@
+     first...thankyou for buying explode! you will find explode! very use-
+     ful for every day computing... and for those times where your comput-
+     ing is not every day.
+                  how to use bootle with other programs
+
+     bootle is a custom boot creator. bootle can auto boot (1) hi-res and
+     display that hi-res screen! (2) boot a machine language program **
+     you must know the jump address ** (3) boot a basic program with a
+     built in run feature ** a basic program must be the last file your
+     booting ** (4) or can boot and run up to 4 programs at once... with a
+     hi-res display!
+     load bootle from the disk directory ( yes we know it's in the main
+     menu... if you load bootle from the menu you will have to reset and
+     type sys 2061 ) otherwise load from directory and type run and return
+
+     (1) hi-res... if you have used explode! to (capture) a hi-res game
+     screen and would like to recombine the screen with the isepic (TM),
+     snapshot (TM), capture (TM) or anyother breaking utilitys resulting
+     programs.... than do the following... load and run bootle. follow the
+     instuction screens. when asked if you would like a pic boot answer
+     yes. note.. you must know what type of hi-res your booting ie. doodle
+     koala or generic type. you will be asked for a name... you may enter
+     up to 15 characters and return. you will next be asked for the file
+     name to be booted (your hi-res file) you can call the file anything
+     you like but.... it must be less than 8 characters in length ie.
+
+         [ your pic(.a)] ** you must rename the pic file your using to
+     conform to your selected name [ your pic ] you can use the disk wedge
+     built into explode! to change the file name... ** the syntax for
+     using the wedge is as follows... >r:new name=old name followed with a
+     return. please consult your disk drive manual for other wedge
+     commands such as copy,scratch etc.
+     you will next be asked what type of hi-res file you will be
+     displaying ie. koala, doodle, generic etc. you will select one from
+     the bootle menu.
+     ** you must have a blank formatted disk ready to save all the bootle
+     created boots to... it is recommended that these boots be the first
+     files on the disk directory. **
+     next you will be asked for the name of the boot bootle will create to
+     boot your broken game or utility with. you can enter up to 8
+     characters. ** use the boot your breaking utility created ie. isepic,
+     shapshot, etc. you will have to rename the boot to conform to the one
+     you've selected during it's creation. ** see example below.(original)
+
+        1 isepic boot
+      169 -isepic boot
+     --------------------how bootle treated disk will look----------------
+        1 bootle boot ( your selected name )
+        2 .your pic boot.a ( same as above )
+       40 .your pic boot.b (a koala type ie. 40 blocks you renamed )
+        1 .isepic boot.a ( your selected name )
+        1 .isepic boot.b   (note renamed isepic boot)
+      169 -isepic boot ( original isepic name )
+
+     although the above looks difficult... it really is not. once you've
+     run bootle and used it. ** we suggest you run a practice disk before
+     jumping into your first program. **
+
+     we hope you like and use bootle...
+
+     returning to the main menu.....
+
+
+     *********************************************************************
+

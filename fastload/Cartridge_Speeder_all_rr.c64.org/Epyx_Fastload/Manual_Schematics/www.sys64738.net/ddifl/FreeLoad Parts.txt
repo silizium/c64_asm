@@ -1,0 +1,19 @@
+FreeLoad Parts
+==============
+
+1 - 27C64 8KB EPROM
+1 - 74LS07 Hex Buffer
+1 - 13mm Tactile Switch
+1 - 2.2K Vishay Resistor
+1 - 0.47uF Murata MLCC Capacitor
+1 - Subminiature SPST Toggle Switch
+1 - 2.54mm Pin Header + Terminal + Housing
+1 - 3mm 3.2v Pink Flat Top LED
+1 - 3mm 3.2v Rainbow LED (Alternate)
+1 - 14 Pin Garry White Machine Socket
+1 - 28 Pin Open Frame Machine Socket
+2 - 4-40 Zinc Plated Brass Nuts
+2 - 4-40 3/4" Stainless Flat Head Machine Screws
+2 - Zinc Plated Brass Round Spacer #6 x 1/4" D x 7/32" L
+1 - Seton DuraGuard Blue Aluminum Label
+1 - CBM Cartridge Case

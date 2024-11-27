@@ -1,0 +1,227 @@
+*********
+
+Welcome to Project 64!
+
+The goal of Project 64 is to preserve Commodore 64 related documents
+in electronic text format that might otherwise cease to exist with the
+rapid advancement of computer technology and declining interest in 8-
+bit computers on the part of the general population.
+
+Extensive efforts were made to preserve the contents of the original
+document.  However, certain portions, such as diagrams, program
+listings, and indexes may have been either altered or sacrificed due
+to the limitations of plain vanilla text.  Diagrams may have been
+eliminated where ASCII-art was not feasible.  Program listings may be
+missing display codes where substitutions were not possible.  Tables
+of contents and indexes may have been changed from page number
+references to section number references. Please accept our apologies
+for these limitations, alterations, and possible omissions.
+
+Document names are limited to the 8.3 file convention of DOS. The
+first characters of the file name are an abbreviation of the original
+document name. The version number of the etext follows next. After
+that a letter may appear to indicate the particular source of the
+document. Finally, the document is given a .TXT extension.
+
+The author(s) of the original document and members of Project 64 make
+no representations about the accuracy or suitability of this material
+for any purpose.  This etext is provided "as-is".  Please refer to the
+warantee of the original document, if any, that may included in this
+etext.  No other warantees, express or implied, are made to you as to
+the etext or any medium it may be on.  Neither the author(s) nor the
+members of Project 64 will assume liability for damages either from
+the direct or indirect use of this etext or from the distribution of
+or modification to this etext. Therefore if you read this document or
+use the information herein you do so at your own risk.
+
+*********
+
+The Project 64 etext of the ~Mach5 fast-loader cartridge~, Converted
+to etext by Steve Neas <sneas@ot.com>.  The tilde character [~] has
+been used to represent the left arrow key on the Commodore 64.
+
+MACH5F10.TXT, November 1997, etext #304#
+
+*********
+
+ACCESS Software Incorporated
+
+MACH5
+Cartridge
+Instruction Manual
+for
+Commodore 128/64
+and 1541/1571 disk
+
+
+CARTRIDGE FAST LOADER
+
+Note: Mach5 is designed for use with the Commodore C128/C64 and 1571
+or 1541 or compatible disk drive.
+
+
+SET UP
+
+1. Make sure that your computer is turned OFF before inserting or
+removing your Mach5 CARTRIDGE.
+
+2. Insert the Mach5 CARTRIDGE into the cartridge slot located at the
+rear right corner of the computer.
+
+3. Turn on your disk drive(s) and your computer.  After the computer
+has been turned on, the words, "Mach-5 V-XX LOADER ENGAGED" will
+appear on the screen.
+
+
+MENU
+
+Type "~M," to display the command menu at any time that the
+cursor is flashing.
+
+The following commands are available with Mach5 CARTRIDGE.
+
+COMMAND        FUNCTION
+
+
+$              List a directory on the screen without erasing the
+               program in memory.
+
+               While listing a disk directory to the screen, the
+               display scrolling may be paused and unpaused by
+               pressing the 'space' bar.
+
+               To load a file from a directory that has been listed
+               to the screen, simply move the cursor to the left most
+               column next to the file name, and use the appropriate
+               command to load the file.  Mach5 will then attempt to
+               load the file by accessing the most current drive used
+               (see @DN command).
+
+@COMMAND       Send a DOS command to the most current disk drive
+               (Example: @i is the same as OPEN 15,DN,15,"I":CLOSE
+               15).
+
+               By pressing the '@' key (which is used to send a
+               command to the drive) and the 'return', the error
+               condition of the most current drive may be displayed.
+
+@DN            This command is essentially the same as the BASIC
+               command 'POKE 186,DN' where DN is a drive number from
+               8 to 11.  All load, save and DOS commands will refer
+               to this most currently designated drive number for
+               drive operations.
+
+/FILENAME      The same as LOAD "FILENAME",DN.
+
+£FILENAME      The '£' key, followed by a file name, will not only
+               load a BASIC file, but will also immediately run the
+               file.
+               EXAMPLE: LOAD "FILENAME",DN:RUN.
+
+^FILENAME      The same as LOAD "FILENAME",DN,1.
+
+=FILENAME      The same as SAVE "FILENAME",DN.
+
+~*             The same as LOAD "*",8,1:RUN.  When using the '~*'
+               command, if the file does not auto-execute, the file
+               will now be made to execute.
+               EXAMPLE: LOAD":*",DN,1:RUN.
+
+~P             The same as OPEN 4,4,7:CMD4 (Printer open for
+               upper/lower case).
+
+~U             The same as OPEN 4,4:CMD4 (Printer open for upper
+               case/graphics).
+
+~C             The same as PRINT#4:CLOSE 4 (Close printer channel).
+
+~L             The same as LOAD "(add FILENAME",DN).
+
+~S             The same as SAVE "(add FILENAME",DN).
+
+~M             Display Mach5 menu.
+
+~R             Disable 1541 drive RATTLE ON ERROR for most current
+               drive.  (To re-enable, turn drive off and on).
+
+~D             Disable FAST LOADER and save but retain commands.
+
+~E             Enable MACH DOS routines.
+
+~H             Hard copy print out of the screen.  Works in 'DIRECT'
+               mode only.
+
+~O             'O' will restore a BASIC program previously 'NEW'd, or
+               restore the program after a system reset.  (This is
+               equivalent to the BASIC command 'OLD').
+
+$HHHH          This command will convert and display on the screen
+               the hexidecimal, decimal and binary of the 4-digit hex
+               number input
+               (EXAMPLE: $1F09).
+
++DDDDD         This command will convert and display on the screen
+               the hexidecimal, decimal and binary equivalent of the
+               decimal number input
+               (Example: +1394).
+
+%BBBBBBBB-     This command will convert and display on the screen
+BBBBBBBB       the hexidecimal, decimal and binary equivalent of the
+               binary number input
+               (Example: %0011101011001000).
+
+@F:DISKNAME,ID This is a 10 second disk format command for use on
+               1541 drives.  The diskname must be from 1 to 16
+               digits, and the ID must be 2 digits.  When this
+               command is invoked, the drive light will NOT turn on
+               while formatting, but it will turn on briefly at
+               the end of formatting to indicate a successful format.
+               If, when the directory is listed, the disk has not
+               been properly formatted, simply initialize the drive
+               and repeat the format command.
+
+
+ADDITIONAL INFORMATION
+
+- To disable COMMANDS, but not affect the MACH DOS, type SYS57043.
+- To enable COMMANDS ONLY type SYS57054.
+- To enable COMMANDS and MACH DOS, type SYS57051.
+- To enable MACH DOS only, type SYS57003.
+
+- The directory list command "$" will use the most current drive
+number.  You may directly select a device by using the @DN command,
+where DN=drive number (8-11).
+
+- Users of SYSRES (TM by Solidus International) can do fast program
+file loads with Mach5, but must use conventional BASIC syntax (i.e.
+LOAD "FILENAME",DN).
+
+- There are very few programs that will not load with Mach5 engaged.
+If a program does fail to load, try typing "~D" to disable the MACH
+DOS rather than removing the cartridge.  The time required to load a
+program depends on many factors, including booting technique, error
+checking, etc.  Speeds up to 500% of normal are possible with long,
+single file program loads.  With copy protected programs, it is
+usually possible to save a few seconds as well as drive wear by
+disabling the drive rattle.  Some programs, however, may not load
+properly with the rattle disabled.
+
+- After the computer is first turned on, be sure and wait for the
+disk light to go out before accessing the disk with a command such
+as "$".
+
+- If a scrambled (non-working) screen occurs when Mach5 CARTRIDGE
+and/or a printer interface is connected to your printer the problem
+is most commonly a weak or failing power supply.  See your local
+Commodore dealer and try a different power supply.
+
+
+ACCESS SOFTWARE
+2561 SOUTH 1560 WEST
+WOODS CROSS, UTAH 84087
+
+*********
+
+End of Project 64 etext Mach5 fast-loader cartridge.
+
+*********

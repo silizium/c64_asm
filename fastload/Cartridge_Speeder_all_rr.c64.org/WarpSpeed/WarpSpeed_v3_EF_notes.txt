@@ -1,0 +1,28 @@
+This V3 version for EasyFlash was created by LordCrass - he notes:
+
+
+All bugs I was able to find have been fixed. I also removed a performance optimization I previously added that skipped uploading 8k drive code and creating GCR tables if they were already there as it only checked a subset of the data. Powering the drive off/on would rarely clear all memory, resulting in the check passing, but corrupted tables and leading to load errors. This has a slight performance hit on code upload, but is now much more reliable.
+
+Super-warp mode no longer causes issues with any of the utilities and it should now set proper track alignment (required for maximum speed) for both regular DOS and JiffyDOS systems.
+
+File copier bug I introduced is fixed.
+
+
+Both the file copier and single copier will also take advantage of extra drive hardware, in any combination. The dual copier remains serial-only and restricted to 1541/1571 drives.
+
+The extra DOS wedge commands that were added to V3 are:
+
+^i - show interleave (place number 1-15 after it to set it. default: 6)
+^p - show parallel detect (use +/- after it to enable/disable. default: enabled)
+^x - show drive ram detect (use +/- after it to enable/disable. default: enabled)
+^w - show super-warp status (use +/- after it to enable/disable. default: disabled)
+
+The parallel/drive-ram is scanned for and used if detected, unless disabled with the ^p- and/or ^x- commands.
+
+8k drive ram (at either $6000 or $8000) loads are interleave-independent.
+
+Super-warp mode requires a 1571 with parallel cable and 8k RAM. The disk must be formatted with the WarpSpeed cartridge's fast-format routine (@F) and the files written with interleave set to 1 (^i1). Then set ^w+ before loading these files to get fastest speeds offered. Screen will turn off during this mode to prevent VIC-II interruption and missed data bytes.
+
+There is nothing special about super-warp files. They are simply written with no sector interleave and an optimal track-to-track alignment. They can be read with any loader, although performance will be noticeably worse if that loader is dependent on the sector interleave.
+
+If testing the super-warp feature in Vice, use G64 images as D64 doesn't seem to emulate the rotation quite the same. Track alignment is not handled for double-sided disks.

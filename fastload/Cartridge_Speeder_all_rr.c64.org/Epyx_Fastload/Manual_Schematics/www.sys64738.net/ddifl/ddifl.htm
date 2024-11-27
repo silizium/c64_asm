@@ -1,0 +1,160 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>DDI FreeLoad</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<script src="jquery.min.js" type="text/javascript"></script> 
+<style type="text/css" media="screen">
+body{font-family:Arial, Helvetica, sans-serif; background:url('brick.gif') 0 0 repeat #000}
+#cycler{position:relative;}
+#cycler img{position:absolute;z-index:1;background-color:black}
+#cycler img.active{z-index:3}
+.blue:hover{outline: dotted 1px blue;}
+</style>
+</head>
+<body>
+
+<bgsound id="soundfiles"> 
+<script language="JavaScript">
+var aySound = new Array();
+aySound[0] = "http://www.sys64738.net/ddi/dac.mp3"; 
+aySound[1] = "http://www.sys64738.net/ddi/wind.mp3"; 
+IE = (navigator.appVersion.indexOf("MSIE")!=-1 && document.all)? 1:0; 
+NS = (navigator.appName=="Netscape" && navigator.plugins["LiveAudio"])? 1:0; 
+ver4 = IE||NS? 1:0; 
+onload=auPreload; 
+function auPreload() { 
+if (!ver4) return; 
+if (NS) auEmb = new Layer(0,window); 
+else { Str = "<DIV ID='auEmb' STYLE='position:absolute; left:-33px; top:-33px'></DIV>"; 
+document.body.insertAdjacentHTML("BeforeEnd",Str); 
+} 
+var Str = ''; 
+for (i=0;i<aySound.length;i++) 
+Str += "<EMBED SRC='"+aySound[i]+"'AUTOSTART='FALSE' HIDDEN='TRUE'>" 
+if (IE) auEmb.innerHTML = Str; 
+else { 
+auEmb.document.open(); 
+auEmb.document.write(Str); 
+auEmb.document.close(); 
+} 
+auCon = IE? document.all.soundfiles:auEmb; 
+auCon.control = auCtrl; 
+} 
+function auCtrl(whSound,play) { 
+if (IE) this.src = play? aySound[whSound]:''; 
+else eval("this.document.embeds[whSound]." + (play? "play()":"stop()")) 
+} 
+function playSound(whSound) { if (window.auCon) auCon.control(whSound,true);} 
+function stopSound(whSound) { if (window.auCon) auCon.control(whSound,false);} 
+</script>
+
+<div style="visibility:hidden">
+<img src="ddiprojects.gif">
+<img src="ddi.gif">
+<img src="ddifl parts.gif">
+<img src="ddifl rom.gif">
+<img src="ddifl gerber.gif">
+<img src="fastload.gif">
+</div>
+
+<div style="position:absolute; left:20px; top:20px">
+<img src="ddifl.png" border="0" usemap="#images"/>
+<map name="images" id="images">
+<area alt="" title="FreeLoad" href="ddifl.htm" shape="rect" coords="240,16,380,50" />
+</map></div>
+
+<div style="position:absolute; left:33px; top:28px">
+<a href="" title="DDI Projects">
+<img src="ddiprojects.png" border="0"
+onmouseover="this.src='ddiprojects.gif';"
+onmouseout="this.src='ddiprojects.png';"
+onClick="MyWindow=window.open('http://www.sys64738.net/index.htm', '_self'); return false;"/>
+</a></div>
+
+<div style="position:absolute; left:30px; top:142px">
+<a href="FreeLoad Parts.txt"><img src="ddifl parts.png" border="0"
+onmouseover="this.src='ddifl parts.gif';" 
+onmouseout="this.src='ddifl parts.png';"
+onClick="MyWindow=window.open('FreeLoad Parts.txt', '', 'toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, width=1024, height=668, left=0, top=0'); return false;"/>
+</a></div>
+
+<div style="position:absolute; left:30px; top:166px">
+<a href="FreeLoad ROM.zip"><img src="ddifl rom.png" border="0"
+onmouseover="this.src='ddifl rom.gif';" 
+onmouseout="this.src='ddifl rom.png';"
+onClick="MyWindow=window.open('FreeLoad ROM.zip','_self'); return false;"/>
+</a></div>
+
+<div style="position:absolute; left:30px; top:190px">
+<a href="DDIFL Gerber.zip"><img src="ddifl gerber.png" border="0"
+onmouseover="this.src='ddifl gerber.gif';" 
+onmouseout="this.src='ddifl gerber.png';"
+onClick="MyWindow=window.open('DDIFL Gerber.zip', '', 'toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1024, height=668, left=0, top=0'); return false;"/>
+</a></div>
+
+<div style="position:absolute; left:30px; top:214px">
+<a href="http://ar.c64.org/rrwiki/images/c/c4/Epyx_FastLoad_Manual.pdf"><img src="fastload.png" border="0"
+onmouseover="this.src='fastload.gif';" 
+onmouseout="this.src='fastload.png';"
+onClick="MyWindow=window.open('http://ar.c64.org/rrwiki/images/c/c4/Epyx_FastLoad_Manual.pdf', '', 'toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=yes, resizable=yes, width=1024, height=668, left=0, top=0'); return false;"/>
+</a></div>
+
+<div style="position:absolute; left:48px; top:275px">
+<a href="http://blog.victwenty.org" title="Available at .."><img src="vic20org.png" border="0"
+onmouseover="this.src='vic20org.png';" 
+onmouseout="this.src='vic20org.png';" />
+</a></div>
+
+<div style="position:absolute; left:40px; top:340px">
+<a href="http://www.corei64.com/store/" title="Available at .."><img src="corei64.png" border="0"
+onmouseover="this.src='corei64.png';" 
+onmouseout="this.src='corei64.png';" />
+</a></div>
+
+<div style="position:absolute; left:599px; top:456px">
+<a href=""><img src="ddifl pcb.png" border="0"
+onmouseover="this.src='ddifl pcb.gif';" 
+onmouseout="this.src='ddifl pcb.png';"
+onClick="MyWindow=window.open('ddimci.htm','_self'); return false;"/>
+</a></div>
+
+<div style="position:absolute; left:932px; top:547px">
+<a href="ddifl.htm" title="Dungeon Dwellers Inc...">
+<img src="ddi.png" border="0" 
+onmouseover="playSound(0); this.src='ddi.gif';" 
+onmouseout="stopSound(0); this.src='ddi.png';"/>
+</a></div>
+
+<div class="blue" style="position:absolute; left:55px; top:440px">
+<img src="telengard.png" border="0" 
+onmouseover="playSound(1);" 
+onmouseout="stopSound(1);"
+onClick="MyWindow=window.open('http://www.sys64738.net/ddidt/ddidt.htm','_self');"/>
+</div>
+
+<div style="position:absolute; left:264px; top:356px" id="cycler">
+<a href="ddifl.jpg">
+<img class="active" src="ddifl1.jpg" title="" width="320" height="240"/>
+<img src="ddifl2.jpg" title="" width="320" height="240"/>
+<img src="ddifl3.jpg" title="" width="320" height="240"/>
+<img src="ddifl4.jpg" title="" width="320" height="240"/>
+<img src="ddifl5.jpg" title="" width="320" height="240"/>
+<img src="ddifl6.jpg" title="" width="320" height="240"/>
+</a></div>
+
+<script type="text/javascript">
+function cycleImages(){
+var $active = $('#cycler .active');
+var $next = ($active.next().length > 0) ? $active.next() : $('#cycler img:first');
+$next.css('z-index',2)
+$active.fadeOut(3400,function(){//fade out the top image
+$active.css('z-index',1).show().removeClass('active')
+$next.css('z-index',3).addClass('active')
+});
+}
+$(document).ready(function(){
+setInterval('cycleImages()', 30000);
+})
+</script>
+</body>
+</html> 

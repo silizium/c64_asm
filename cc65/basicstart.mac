@@ -1,0 +1,43 @@
+.macro  basicstart nr, nrstop
+.proc startupcode
+		.org $0801
+		.word @+
+		.ifnblank nr
+		   .word nr		; Zeilennummer
+		.else
+			nr=0
+		   .word nr
+		.endif
+		.ifnblank nrstop
+			.if nr>=nrstop 
+				.error "*** line numbers not in sequence" 
+			.endif
+			.byte $9e, .sprintf("%d", *+12+3) ;.strlen(nrstop)) ;SYS
+			.byte ":",$90,":"	;STOP
+			.byte $9e
+			.asciiz .sprintf("%d", *+10)
+		.else
+			.byte $9e
+			.asciiz .sprintf("%d", *+7) ;SYS
+		.endif
+@:		.word 0
+.endproc
+.endmacro
+
+.macro	basicrem nr
+		.org $0801
+		.word basicend
+		.ifnblank nr
+		   .word nr		; Zeilennummer
+		.else
+		   .word 0
+		.endif
+		.byte $9e		; SYS
+		.byte .sprintf ("%d:", *+7)
+		.byte $8f,'"'	; REM"
+.endmacro
+
+.macro	basicremend
+			.byte 0
+basicend:	.word 0
+.endmacro
